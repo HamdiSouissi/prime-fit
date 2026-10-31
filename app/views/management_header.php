@@ -46,4 +46,4 @@ $__needsCharts = in_array($section, ['fitness','dashboard'], true);
 <div class="top-profile"><div class="avatar gold"><?= e(mb_substr($__name,0,1)) ?></div><div><strong><?= e($__name) ?></strong><small><?= e($__role) ?></small></div></div></div></header>
 <main class="content" id="main">
 <?php if (!$hideHeading): ?><div class="heading"><div><h1><?= e($title) ?></h1><p><?= e($subtitle) ?></p></div></div><?php endif; ?>
-<?php if ($flash): ?><div class="notice" role="status" data-notification="<?= mb_stripos($flash, 'non envoyé') !== false ? 'warning' : 'success' ?>"><?= e($flash) ?></div><?php endif; ?><?php if ($error): ?><div class="error" role="alert" data-notification="error"><?= e($error) ?></div><?php endif; ?>
+<?php if ($flash): ?><div class="notice" role="status" data-notification="<?= mb_stripos($flash, 'non envoyé') !== false ? 'warning' : 'success' ?>"><?= e($flash) ?></div><?php endif; ?><?php if ($error): ?><div class="error" role="alert" data-notification="error"<?= !empty($unknownCard) ? ' data-notification-kind="access" data-notification-title="Carte non reconnue"' : '' ?>><?= e($error) ?></div><?php endif; ?>
