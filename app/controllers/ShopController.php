@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../services/StockManager.php';
 /** Boutique : stocks et ventes d'un seul produit par opération. */
 class ShopController {
     private function fail(string $message): void { throw new DomainException($message); }
@@ -13,7 +14,7 @@ class ShopController {
         $error=''; $pdo=db();
         if ($_SERVER['REQUEST_METHOD']==='POST') {
             verify_csrf(); $action=$_POST['action'] ?? '';
-            if (($action==='sale' && !$canSell) || (in_array($action,['product','restock'],true) && !$canManage)) { http_response_code(403); exit('Accès interdit.'); }
+            if (($action==='sale' && !$canSell) || (in_array($action,['product','restock','edit_product','toggle_product','adjust'],true) && !$canManage)) { http_response_code(403); exit('Accès interdit.'); }
             try {
                 if ($action==='product') {
                     $name=trim($_POST['name'] ?? ''); $sku=trim($_POST['sku'] ?? ''); $price=str_replace(',','.',trim($_POST['price'] ?? ''));
@@ -25,6 +26,21 @@ class ShopController {
                     $id=(int)$pdo->lastInsertId();
                     if ($stock>0) $pdo->prepare("INSERT INTO stock_movements (product_id,quantity_change,reason,created_by) VALUES (?,?,'initial',?)")->execute([$id,$stock,$_SESSION['user']['id']]);
                     $this->audit($pdo,'Produit créé #'.$id); $pdo->commit(); $_SESSION['flash']='Produit créé.';
+                } elseif (in_array($action,['edit_product','toggle_product','adjust'],true)) {
+                    $id=filter_var($_POST['product_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                    if (!$id) $this->fail('Produit invalide.');
+                    $service=new StockManager($pdo,(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? '');
+                    if ($action==='edit_product') { $service->edit($id,$_POST); $_SESSION['flash']='Produit mis à jour. Les ventes passées conservent leur prix d’origine.'; }
+                    elseif ($action==='toggle_product') {
+                        $active=$_POST['active'] ?? ''; if (!in_array($active,['0','1'],true)) $this->fail('Statut invalide.');
+                        $service->setActive($id,$active==='1'); $_SESSION['flash']=$active==='1' ? 'Produit réactivé.' : 'Produit désactivé. Il ne peut plus être vendu.';
+                    } else {
+                        $counted=filter_var($_POST['counted'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
+                        $expected=filter_var($_POST['expected_stock'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>1000000]]);
+                        $note=$_POST['note'] ?? ''; if ($counted===false || $expected===false || !is_string($note)) $this->fail('Quantité ou motif invalide.');
+                        $change=$service->adjust($id,$counted,$expected,$note); $_SESSION['flash']='Stock corrigé de '.($change>0?'+':'').$change.' unité(s).';
+                    }
+                    redirect('shop&product='.$id);
                 } elseif (in_array($action,['restock','sale'],true)) {
                     $product=filter_var($_POST['product_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
                     $quantity=filter_var($_POST['quantity'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]);
@@ -52,9 +68,20 @@ class ShopController {
                 } else $this->fail('Action invalide.');
                 redirect('shop');
             } catch (DomainException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); $error=$ex->getMessage(); }
-              catch (PDOException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); if ($ex->getCode()==='23000') $error='Cette référence existe déjà.'; else throw $ex; }
+              catch (PDOException $ex) {
+                  if ($pdo->inTransaction()) $pdo->rollBack(); $info=$ex->errorInfo ?? [];
+                  if (($info[0] ?? '')==='42S22' && (int)($info[1] ?? 0)===1054 && stripos((string)($info[2] ?? ''),'note')!==false) $error='Après sauvegarde, importez database/shop_inventory.sql dans la base utilisée puis réessayez.';
+                  elseif ($ex->getCode()==='23000') $error='Cette référence existe déjà.'; else throw $ex;
+              }
         }
         $products=$pdo->query('SELECT * FROM products ORDER BY name,id')->fetchAll();
+        $selectedId=filter_var($_GET['product'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $selectedProduct=null; $movements=[];
+        if ($selectedId) {
+            $stmt=$pdo->prepare('SELECT * FROM products WHERE id=?'); $stmt->execute([$selectedId]); $selectedProduct=$stmt->fetch();
+            if (!$selectedProduct) { http_response_code(404); exit('Produit introuvable.'); }
+            $stmt=$pdo->prepare('SELECT m.*,u.name AS author FROM stock_movements m LEFT JOIN users u ON u.id=m.created_by WHERE m.product_id=? ORDER BY m.created_at DESC,m.id DESC LIMIT 100'); $stmt->execute([$selectedId]); $movements=$stmt->fetchAll();
+        }
+
         $date=$_GET['date'] ?? date('Y-m-d'); $parsed=DateTimeImmutable::createFromFormat('!Y-m-d',$date);
         if (!$parsed || $parsed->format('Y-m-d')!==$date) $date=date('Y-m-d');
         $stmt=$pdo->prepare('SELECT COALESCE(SUM(total),0) FROM shop_sales WHERE sold_at>=? AND sold_at<DATE_ADD(?,INTERVAL 1 DAY)'); $stmt->execute([$date,$date]); $salesTotal=$stmt->fetchColumn();
