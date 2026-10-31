@@ -1,6 +1,6 @@
 # Prime Fit
 
-Socle MVC PHP natif pour la gestion d'une salle de sport en Tunisie. **Première étape livrée : connexion, déconnexion, journal de connexion, tableau de bord MySQL, gestion de base des membres et abonnements, encaissements partiels, caisse journalière, pointage par carte, gestion des cours collectifs, séances privées des coachs, suivi sportif de base, boutique simple, inventaire des équipements et suivi de trésorerie.** Les autres rubriques du menu sont indicatives et ne sont pas encore implémentées. Ce projet ne constitue pas encore une application complète de gestion de salle.
+Socle MVC PHP natif pour la gestion d'une salle de sport en Tunisie. **Première étape livrée : connexion, déconnexion, journal de connexion, tableau de bord MySQL, gestion de base des membres et abonnements, encaissements partiels, caisse journalière, pointage par carte, gestion des cours collectifs, séances privées des coachs, suivi sportif de base, boutique simple, inventaire des équipements suivi de trésorerie et outils marketing simples.** Les autres rubriques du menu sont indicatives et ne sont pas encore implémentées. Ce projet ne constitue pas encore une application complète de gestion de salle.
 
 ## Prérequis
 
@@ -16,10 +16,11 @@ PHP 8.0+ avec extensions PDO MySQL et mbstring, MySQL 8 ou MariaDB compatible, A
 6. Sur une installation existante antérieure à la boutique, importer `database/shop.sql` ; les nouvelles installations disposent déjà de ces tables.
 7. Sur une installation existante antérieure aux équipements, importer `database/equipment.sql` ; les nouvelles installations disposent déjà de ces tables.
 8. Sur une installation existante antérieure aux dépenses, importer `database/finance.sql` ; les nouvelles installations disposent déjà de cette table.
-9. Pour tester, importer une seule fois `database/demo.sql` sur une base vierge. Les dates du jeu de démonstration sont relatives au jour d'import.
-10. Copier `app/config/local.example.php` vers `app/config/local.php` et adapter les identifiants. Ce fichier est ignoré par Git.
-11. Démarrer Apache et MySQL et ouvrir `http://localhost/prime-fit/public/` ou, si le document root pointe sur `public/`, l'URL du site.
-12. Compte de démonstration : `admin@primefit.tn` / `PrimeFit2026!`. **Ne jamais utiliser ce compte en production** : supprimer le jeu de démo et créer un administrateur avec un mot de passe robuste et `password_hash()` avant mise en ligne.
+9. Sur une installation existante antérieure au marketing, importer `database/marketing.sql` ; les nouvelles installations disposent déjà de cette table.
+10. Pour tester, importer une seule fois `database/demo.sql` sur une base vierge. Les dates du jeu de démonstration sont relatives au jour d'import.
+11. Copier `app/config/local.example.php` vers `app/config/local.php` et adapter les identifiants. Ce fichier est ignoré par Git.
+12. Démarrer Apache et MySQL et ouvrir `http://localhost/prime-fit/public/` ou, si le document root pointe sur `public/`, l'URL du site.
+13. Compte de démonstration : `admin@primefit.tn` / `PrimeFit2026!`. **Ne jamais utiliser ce compte en production** : supprimer le jeu de démo et créer un administrateur avec un mot de passe robuste et `password_hash()` avant mise en ligne.
 
 Pour un essai local : `php -S 0.0.0.0:8000 -t public` (après configuration de MySQL).
 
@@ -46,7 +47,7 @@ Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage e
 
 ## Étapes suivantes
 
-Fiches membres enrichies (photo, historique, certificat et QR), renouvellement guidé et gel avec prolongation, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, marketing, rapports, paramètres et portail membre. Les exports PDF, QR codes, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
+Fiches membres enrichies (photo, historique, certificat et QR), renouvellement guidé et gel avec prolongation, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports, paramètres et portail membre. Les exports PDF, QR codes, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
 
 ## Membres et abonnements
 
@@ -95,3 +96,9 @@ L'historique affiche les 100 dernières interventions par équipement. Le coût 
 Admin, Gérant et Comptable peuvent enregistrer des dépenses payées (loyer, salaires, électricité, eau, maintenance, fournitures, marketing ou autre) et consulter une synthèse mensuelle : paiements d’abonnement, ventes boutique, dépenses et différence. L'export CSV contient toutes les dépenses du mois sélectionné, avec protection des champs texte contre les formules de tableur. Les dépenses sont enregistrées et journalisées dans une transaction.
 
 Cette synthèse est un suivi de trésorerie simplifié, **pas un bilan comptable ou fiscal** : TVA, timbre, écritures comptables, salaires détaillés, remboursements et rapprochement bancaire ne sont pas implémentés. Les coûts saisis dans le module équipements et les commissions coach ne créent pas automatiquement de dépenses : les saisir ici si effectivement payés. Les séances privées ne produisent pas d'encaissement ; les chiffres du dashboard restent limités aux abonnements. La modification, suppression ou contrepassation des dépenses, les pièces justificatives et l'export PDF/Excel natif restent à développer.
+
+## Marketing et relances
+
+Admin et Gérant peuvent créer, activer ou désactiver des codes promotionnels en pourcentage. La Réception peut consulter le catalogue et préparer les relances. Les codes sont **informatifs uniquement** : ils ne sont ni appliqués ni vérifiés lors de la création d'un abonnement ou d'un paiement. Aucun suivi d'utilisation, plafond ou parrainage n'est encore disponible.
+
+Les anniversaires du mois et abonnements expirant sous sept jours sont affichés pour les membres actifs, jusqu'à 100 lignes par liste. Un numéro tunisien de 8 chiffres, avec ou sans indicatif +216, permet d'ouvrir WhatsApp avec un message prérempli ; le membre du personnel vérifie et envoie lui-même le message. Il n'y a aucun envoi automatique, SMS, historique de contact ni contrôle de consentement dans l'application. Vérifiez les autorisations et préférences de communication avant toute relance ; les membres inactifs ou blacklistés ne figurent pas dans ces listes.
