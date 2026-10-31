@@ -4,7 +4,7 @@ Socle MVC PHP natif pour la gestion d'une salle de sport en Tunisie. **Première
 
 ## Prérequis
 
-PHP 8.0+ avec extensions PDO MySQL et mbstring, MySQL 8 ou MariaDB compatible, Apache (XAMPP/WAMP) ou hébergement PHP. Chart.js, Lucide et les polices sont chargés depuis des CDN et nécessitent Internet. L'application utilise le fuseau Africa/Tunis et affiche les montants en DT à trois décimales.
+PHP 8.0+ avec extensions PDO MySQL, mbstring et zlib, MySQL 8 ou MariaDB compatible, Apache (XAMPP/WAMP) ou hébergement PHP. Chart.js, Lucide et les polices sont chargés depuis des CDN et nécessitent Internet. L'application utilise le fuseau Africa/Tunis et affiche les montants en DT à trois décimales.
 
 ## Installation
 
@@ -116,3 +116,17 @@ La caméra exige un navigateur compatible et un contexte sécurisé **HTTPS** (o
 Une installation existante peut encore avoir la table `members` sans la colonne `qr_token`. Le nouveau code ne peut alors pas enregistrer le membre. Après sauvegarde, ouvrez phpMyAdmin, sélectionnez **la base réellement configurée** dans `app/config/local.php` (par défaut `prime_fit`), puis importez `database/member_qr.sql` une seule fois. Réessayez l'ajout. Une installation neuve créée avec le `schema.sql` actuel n'a pas besoin de cette migration. Ne réimportez pas `schema.sql` ou `demo.sql` sur une base utilisée pour corriger ce problème.
 
 Si la colonne existe déjà ou si l'erreur persiste, consultez les journaux PHP/Apache pour connaître l'erreur exacte : une erreur de connexion, de droits ou une autre migration manquante peut produire le même message général. Ne publiez pas les identifiants de la base.
+
+## Envoi de la carte QR par e-mail
+
+Une adresse e-mail valide est obligatoire pour chaque **nouveau** membre. Après la création et la validation en base, l'application prépare automatiquement un e-mail contenant son QR personnel en pièce jointe PNG. Depuis « Membres → Carte QR », le personnel autorisé peut également utiliser « Envoyer le QR par e-mail » pour réessayer ; le message est adressé à l'adresse actuelle de la fiche. Après renouvellement du QR, renvoyez la nouvelle carte : l'ancienne est invalide.
+
+**Configuration indispensable :** dans `app/config/local.php` (copié depuis `local.example.php`), renseignez une adresse d'expéditeur de votre domaine et activez l'envoi :
+
+```php
+'mail' => ['enabled' => true, 'from' => 'contact@votre-domaine.tn'],
+```
+
+Conservez également la configuration `db` du fichier. L'application utilise la fonction PHP native `mail()` : votre hébergement doit disposer d'un transport sortant correctement configuré (sendmail ou relais SMTP géré par le serveur). Sur XAMPP/WAMP, ce transport n'est généralement pas configuré par défaut ; renseignez-vous auprès de votre hébergeur ou configurez-le sur le serveur. L'extension PHP **zlib** est nécessaire pour créer l'image PNG. Configurez aussi les enregistrements SPF/DKIM/DMARC de votre domaine selon votre fournisseur et effectuez un envoi de test réel.
+
+Un message « accepté par le serveur de messagerie » ne garantit pas la livraison dans la boîte du client. Si l'envoi est désactivé, mal configuré ou échoue, le membre reste enregistré et l'interface l'indique : corrigez la configuration puis renvoyez la carte. Aucun service d'envoi externe n'est appelé pour générer le QR. L'e-mail n'est pas chiffré de bout en bout ; le QR est copiable et ne doit être envoyé qu'à l'adresse confirmée du membre. Bibliothèque QR PHP : PHP QR Code, licence LGPL-3.0, incluse dans `app/vendor/phpqrcode` (cache désactivé et adaptations de compatibilité PHP 8).

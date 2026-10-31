@@ -28,6 +28,15 @@ require __DIR__.'/management_header.php';
   <aside class="card member-card-side no-print">
     <h3>Votre carte QR</h3>
     <p>Ce QR est personnel : une copie peut être utilisée pour pointer. En cas de perte, renouvelez-le et imprimez la nouvelle carte.</p>
+    <?php if ($member['qr_token']): ?>
+    <form method="post" action="index.php?page=member_card">
+      <input type="hidden" name="csrf" value="<?= e(csrf()) ?>">
+      <input type="hidden" name="id" value="<?= (int)$member['id'] ?>">
+      <input type="hidden" name="action" value="send_email">
+      <button class="primary" type="submit">Envoyer le QR par e-mail</button>
+      <p>Adresse : <?= e($member['email'] ?: 'non renseignée') ?></p>
+    </form>
+    <?php endif; ?>
     <form method="post" action="index.php?page=member_card">
       <input type="hidden" name="csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= (int)$member['id'] ?>">

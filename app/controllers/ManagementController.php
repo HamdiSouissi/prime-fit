@@ -1,9 +1,22 @@
 <?php
+require_once __DIR__ . '/../services/MemberCardMailer.php';
 class ManagementController {
     public static function missingQrColumn(PDOException $ex): bool {
         $info = $ex->errorInfo ?? [];
         return ($info[0] ?? '') === '42S22' && (int)($info[1] ?? 0) === 1054
             && stripos((string)($info[2] ?? ''), 'qr_token') !== false;
+    }
+    private function sendCardEmail(array $member): string {
+        global $config;
+        $status = (new MemberCardMailer($config['mail'] ?? []))->send($member);
+        $messages = [
+            'accepted' => 'Carte QR acceptée par le serveur de messagerie pour envoi (livraison non garantie).',
+            'not_configured' => 'E-mail non envoyé : configurez la messagerie dans app/config/local.php.',
+            'missing_email' => 'E-mail non envoyé : aucune adresse valide pour ce membre.',
+            'missing_qr' => 'E-mail non envoyé : générez d’abord la carte QR.',
+            'failed' => 'E-mail non envoyé : vérifiez la configuration du serveur de messagerie puis réessayez.',
+        ];
+        return $messages[$status];
     }
     private function canWrite(): bool { return in_array($_SESSION['user']['role'], ['Admin', 'Gérant', 'Réceptionniste'], true); }
     private function requireWrite(): void { if (!$this->canWrite()) { http_response_code(403); exit('Accès interdit.'); } }
@@ -20,8 +33,8 @@ class ManagementController {
             $phone = trim($_POST['phone'] ?? ''); $email = trim($_POST['email'] ?? '');
             $governorate = trim($_POST['governorate'] ?? ''); $birth = trim($_POST['birth_date'] ?? ''); $status = $_POST['status'] ?? 'active';
             $editing = compact('id','first','last','phone','email','governorate','birth','status');
-            if ($id === false || $first === '' || $last === '' || mb_strlen($first)>100 || mb_strlen($last)>100 || mb_strlen($phone)>30 || mb_strlen($governorate)>80 || mb_strlen($email)>190 || ($email !== '' && !filter_var($email,FILTER_VALIDATE_EMAIL)) || !in_array($status,['active','inactive','blacklisted'],true) || ($birth !== '' && !self::validDate($birth))) {
-                $error = 'Vérifiez les champs : nom et prénom sont obligatoires, et les coordonnées doivent être valides.';
+            if ($id === false || $first === '' || $last === '' || mb_strlen($first)>100 || mb_strlen($last)>100 || mb_strlen($phone)>30 || mb_strlen($governorate)>80 || mb_strlen($email)>190 || (($email === '' && !$id) || ($email !== '' && !filter_var($email,FILTER_VALIDATE_EMAIL))) || !in_array($status,['active','inactive','blacklisted'],true) || ($birth !== '' && !self::validDate($birth))) {
+                $error = 'Vérifiez les champs : nom, prénom et adresse e-mail valide sont obligatoires pour un nouveau membre.';
             } else {
                 try {
                     if ($id) {
@@ -36,7 +49,8 @@ class ManagementController {
                             for ($attempt = 0; $attempt < 5; $attempt++) {
                                 $card = 'PF-' . random_int(10000000, 99999999) . random_int(10000000, 99999999);
                                 try {
-                                    $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$card,$governorate ?: null,$birth ?: null,$status,bin2hex(random_bytes(32))]);
+                                    $qrToken = bin2hex(random_bytes(32));
+                                    $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$card,$governorate ?: null,$birth ?: null,$status,$qrToken]);
                                     break;
                                 } catch (PDOException $ex) {
                                     if ($ex->getCode() !== '23000' || (int)($ex->errorInfo[1] ?? 0) !== 1062 || $attempt === 4) throw $ex;
@@ -46,7 +60,9 @@ class ManagementController {
                             $this->log('Fiche membre et carte QR créées #'.$id);
                             $pdo->commit();
                         } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
-                        $this->flash('Membre créé. Sa carte QR est prête à être imprimée.'); redirect('member_card&id='.$id);
+                        // L'envoi intervient après le commit : son échec ne supprime pas le membre.
+                        $mailMessage = $this->sendCardEmail(['first_name'=>$first, 'email'=>$email, 'card_number'=>$card, 'qr_token'=>$qrToken]);
+                        $this->flash('Membre créé. ' . $mailMessage); redirect('member_card&id='.$id);
                     }
                     $this->log('Fiche membre enregistrée #'.$id); $this->flash('Fiche membre enregistrée.'); redirect('members');
                 } catch (PDOException $ex) {
@@ -77,6 +93,13 @@ class ManagementController {
         if (!$id) { http_response_code(404); exit('Membre introuvable.'); }
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             verify_csrf();
+            $action = $_POST['action'] ?? 'renew';
+            if ($action === 'send_email') {
+                $stmt = db()->prepare('SELECT first_name,email,card_number,qr_token FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
+                if (!$member) { http_response_code(404); exit('Membre introuvable.'); }
+                $this->flash($this->sendCardEmail($member)); redirect('member_card&id='.$id);
+            }
+            if ($action !== 'renew') { http_response_code(400); exit('Action invalide.'); }
             $pdo = db(); $pdo->beginTransaction();
             try {
                 $stmt=$pdo->prepare('SELECT id FROM members WHERE id=? FOR UPDATE'); $stmt->execute([$id]);
@@ -86,7 +109,7 @@ class ManagementController {
                 $this->flash('Carte QR créée. Toute carte QR précédente est désormais invalide.'); redirect('member_card&id='.$id);
             } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
         }
-        $stmt=db()->prepare('SELECT id,first_name,last_name,card_number,qr_token FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
+        $stmt=db()->prepare('SELECT id,first_name,last_name,email,card_number,qr_token FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
         if (!$member) { http_response_code(404); exit('Membre introuvable.'); }
         header('Cache-Control: no-store, private'); header('Referrer-Policy: no-referrer');
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/member_card.php';

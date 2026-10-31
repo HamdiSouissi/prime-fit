@@ -12,7 +12,7 @@ require __DIR__.'/../app/controllers/ManagementController.php';
 $_SESSION=['user'=>['id'=>1,'role'=>'Admin']]; $_SERVER['REQUEST_METHOD']='POST'; $_SERVER['REMOTE_ADDR']='127.0.0.1';
 $controller=new ManagementController();
 for ($i=0; $i<2; $i++) {
-    $_POST=['id'=>'0','first_name'=>'Membre','last_name'=>(string)$i,'status'=>'active','card_number'=>'USURPÉ'];
+    $_POST=['id'=>'0','first_name'=>'Membre','last_name'=>(string)$i,'status'=>'active','email'=>'membre@example.tn','card_number'=>'USURPÉ'];
     try { $controller->members(); throw new RuntimeException('Redirection attendue'); } catch (TestRedirect $redirect) {
         if ($redirect->getMessage() !== 'member_card&id='.($i+1)) throw new RuntimeException('Redirection incorrecte');
     }
