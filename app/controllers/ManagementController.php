@@ -57,11 +57,13 @@ class ManagementController {
                                 }
                             }
                             $id = (int)$pdo->lastInsertId();
+                            $stmt = $pdo->prepare('SELECT created_at FROM members WHERE id=?'); $stmt->execute([$id]);
+                            $createdAt = $stmt->fetchColumn();
                             $this->log('Fiche membre et carte QR créées #'.$id);
                             $pdo->commit();
                         } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
                         // L'envoi intervient après le commit : son échec ne supprime pas le membre.
-                        $mailMessage = $this->sendCardEmail(['first_name'=>$first, 'email'=>$email, 'card_number'=>$card, 'qr_token'=>$qrToken]);
+                        $mailMessage = $this->sendCardEmail(['first_name'=>$first, 'last_name'=>$last, 'email'=>$email, 'card_number'=>$card, 'qr_token'=>$qrToken, 'created_at'=>$createdAt]);
                         $this->flash('Membre créé. ' . $mailMessage); redirect('member_card&id='.$id);
                     }
                     $this->log('Fiche membre enregistrée #'.$id); $this->flash('Fiche membre enregistrée.'); redirect('members');
@@ -95,7 +97,7 @@ class ManagementController {
             verify_csrf();
             $action = $_POST['action'] ?? 'renew';
             if ($action === 'send_email') {
-                $stmt = db()->prepare('SELECT first_name,email,card_number,qr_token FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
+                $stmt = db()->prepare('SELECT first_name,last_name,email,card_number,qr_token,created_at FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
                 if (!$member) { http_response_code(404); exit('Membre introuvable.'); }
                 $this->flash($this->sendCardEmail($member)); redirect('member_card&id='.$id);
             }

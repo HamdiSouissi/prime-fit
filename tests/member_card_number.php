@@ -6,7 +6,7 @@ function verify_csrf(): void {}
 function redirect(string $route): void { throw new TestRedirect($route); }
 function db(): PDO { global $pdo; return $pdo; }
 $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
-$pdo->exec('CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, first_name TEXT, last_name TEXT, phone TEXT, email TEXT, card_number TEXT UNIQUE, governorate TEXT, birth_date TEXT, status TEXT, qr_token TEXT UNIQUE)');
+$pdo->exec('CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, first_name TEXT, last_name TEXT, phone TEXT, email TEXT, card_number TEXT UNIQUE, governorate TEXT, birth_date TEXT, status TEXT, qr_token TEXT UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
 $pdo->exec('CREATE TABLE activity_logs (user_id INTEGER, action TEXT, ip_address TEXT)');
 require __DIR__.'/../app/controllers/ManagementController.php';
 $_SESSION=['user'=>['id'=>1,'role'=>'Admin']]; $_SERVER['REQUEST_METHOD']='POST'; $_SERVER['REMOTE_ADDR']='127.0.0.1';

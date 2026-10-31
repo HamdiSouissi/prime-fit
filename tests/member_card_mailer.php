@@ -1,12 +1,15 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/../app/services/MemberCardMailer.php';
-$member=['first_name'=>'Amine','email'=>'amine@example.tn','card_number'=>'PF-123','qr_token'=>str_repeat('a',64)];
+$member=['first_name'=>'Amine','last_name'=>'Ben <Salah>','created_at'=>'2026-10-31 09:30:00','email'=>'amine@example.tn','card_number'=>'PF-123','qr_token'=>str_repeat('a',64)];
 $sent=null;
 $transport=static function(string $to,string $subject,string $body,string $headers) use (&$sent): bool { $sent=compact('to','subject','body','headers'); return true; };
 $mailer=new MemberCardMailer(['enabled'=>true,'from'=>'contact@example.tn'],$transport);
 if ($mailer->send($member)!=='accepted' || !$sent || $sent['to']!==$member['email']) throw new RuntimeException('Envoi non accepté');
 if (!str_contains($sent['headers'],'multipart/mixed') || !str_contains($sent['body'],'Content-Type: image/png') || str_contains($sent['body'],$member['qr_token'])) throw new RuntimeException('MIME invalide');
+if (!str_contains($sent['body'],'multipart/alternative') || !str_contains($sent['body'],'multipart/related') || !preg_match('/Content-Type: text\/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+)/',$sent['body'],$htmlMatch)) throw new RuntimeException('Version HTML absente');
+$html=base64_decode($htmlMatch[1],true);
+if (!$html || !str_contains($html,'Amine Ben &lt;Salah&gt;') || str_contains($html,'<Salah>') || !str_contains($html,'PF-123') || !str_contains($html,'31/10/2026') || !str_contains($html,'src="cid:') || !preg_match('/Content-ID: <[^>]+>/', $sent['body'])) throw new RuntimeException('Carte HTML incorrecte');
 if (!preg_match('/Content-Type: image\/png;[^\r]+\r\nContent-Disposition:[^\r]+\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+)/',$sent['body'],$matches)) throw new RuntimeException('Pièce jointe absente');
 $png=base64_decode($matches[1],true);
 if ($png===false || substr($png,0,8)!=="\x89PNG\r\n\x1a\n") throw new RuntimeException('PNG invalide');
