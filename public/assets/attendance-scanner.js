@@ -14,8 +14,8 @@
   }
   start.addEventListener('click', async () => {
     if (busy) return;
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { message.textContent = 'Caméra indisponible : utilisez HTTPS ou localhost et autorisez la caméra.'; return; }
-    if (typeof Html5Qrcode === 'undefined') { message.textContent = 'Le lecteur QR n’a pas pu être chargé. Rechargez la page.'; return; }
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) { message.textContent = 'Caméra indisponible : utilisez HTTPS ou localhost et autorisez la caméra.'; window.PrimeNotify?.show('error', message.textContent); return; }
+    if (typeof Html5Qrcode === 'undefined') { message.textContent = 'Le lecteur QR n’a pas pu être chargé. Rechargez la page.'; window.PrimeNotify?.show('error', message.textContent); return; }
     busy = true; start.disabled = true; reader.hidden = false;
     try {
       scanner = new Html5Qrcode('qr-reader', {formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE], verbose: false});
@@ -27,7 +27,7 @@
         await stopCamera(); form.submit();
       }, () => {});
       start.hidden = true; stop.hidden = false; message.textContent = 'Présentez le QR du membre devant la caméra.';
-    } catch (_) { reader.hidden = true; message.textContent = 'Impossible d’ouvrir la caméra. Vérifiez les autorisations, HTTPS et la disponibilité de la caméra.'; }
+    } catch (_) { reader.hidden = true; message.textContent = 'Impossible d’ouvrir la caméra. Vérifiez les autorisations, HTTPS et la disponibilité de la caméra.'; window.PrimeNotify?.show('error', message.textContent); }
     finally { busy = false; start.disabled = false; }
   });
   stop.addEventListener('click', async () => { if (busy) return; busy = true; await stopCamera(); message.textContent = 'Caméra arrêtée.'; busy = false; });

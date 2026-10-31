@@ -40,7 +40,7 @@ require __DIR__.'/management_header.php';
     <form method="post" action="index.php?page=member_card">
       <input type="hidden" name="csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= (int)$member['id'] ?>">
-      <button class="primary" type="submit" <?= $member['qr_token'] ? 'data-confirm="1"' : '' ?>><?= $member['qr_token'] ? 'Renouveler le QR' : 'Générer le QR de ce membre' ?></button>
+      <button class="primary" type="submit" <?= $member['qr_token'] ? 'data-confirm="Renouveler ce QR ? L’ancien code ne fonctionnera plus." onclick="return confirm(&quot;Renouveler ce QR ? L’ancien code ne fonctionnera plus.&quot;)"' : '' ?>><?= $member['qr_token'] ? 'Renouveler le QR' : 'Générer le QR de ce membre' ?></button>
     </form>
     <p id="card-error" class="error" role="alert" hidden></p>
   </aside>

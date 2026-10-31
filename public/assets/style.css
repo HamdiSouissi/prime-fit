@@ -474,3 +474,26 @@ footer span:last-child{margin-left:auto}
  body.member-card-page .member-card-preview{box-shadow:none;max-width:420px;break-inside:avoid}
 }
 .member-card-page [hidden],.scanner-controls [hidden],.qr-reader[hidden]{display:none!important}
+
+/* Notifications et confirmations — modale accessible, charte Prime Fit. */
+[data-notification][hidden],.prime-popup [hidden]{display:none!important}
+.prime-popup{width:min(460px,calc(100% - 32px));max-width:calc(100% - 32px);max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--border-strong);border-radius:10px;background:var(--card);color:var(--text);box-shadow:0 30px 90px rgba(0,0,0,.6);overflow:auto}
+.prime-popup::backdrop{background:rgba(0,0,0,.74);backdrop-filter:blur(5px)}
+.prime-popup[open]{animation:prime-popup-enter .25s var(--ease) both}
+.prime-popup-accent{height:5px;background:var(--accent)}
+.prime-popup-inner{padding:28px 30px 30px}
+.prime-popup-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px}
+.prime-popup-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:8px;background:var(--grad-soft);color:var(--accent-text);font:800 26px/1 var(--font-display);border:1px solid rgba(255,212,0,.3)}
+.prime-popup[data-type=success] .prime-popup-icon{background:var(--ok-bg);color:var(--ok-text);border-color:var(--ok)}
+.prime-popup[data-type=error] .prime-popup-icon{background:var(--err-bg);color:var(--err-text);border-color:var(--err)}
+.prime-popup[data-type=warning] .prime-popup-icon{background:var(--warn-bg);color:var(--warn-text);border-color:var(--warn)}
+.prime-popup-close{display:grid;place-items:center;border:1px solid var(--border);background:var(--glass-2);color:var(--muted);border-radius:var(--r-sm);width:36px;height:36px;font-size:24px;line-height:1}
+.prime-popup-close:hover{color:var(--text);border-color:var(--border-strong)}
+.prime-popup-kicker{color:var(--accent-text);font-size:10px;font-weight:700;letter-spacing:.16em;margin-bottom:7px}
+.prime-popup h2{font:800 30px/1.05 var(--font-display);color:var(--text);margin:0 0 12px}
+.prime-popup p{color:var(--muted);font-size:15px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.prime-popup-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:26px}
+.prime-popup-cancel{min-height:44px;padding:0 20px;background:var(--glass-2);border:1px solid var(--border-strong);color:var(--text);border-radius:var(--r-sm);font-family:var(--font-display);font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+@keyframes prime-popup-enter{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:480px){.prime-popup-inner{padding:22px}.prime-popup h2{font-size:26px}.prime-popup-actions>*{flex:1}}
+@media(prefers-reduced-motion:reduce){.prime-popup[open]{animation:none}.prime-popup::backdrop{backdrop-filter:none}}
