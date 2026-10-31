@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../services/MemberCardMailer.php';
 require_once __DIR__ . '/../services/SubscriptionService.php';
+require_once __DIR__ . '/../services/MemberProfile.php';
 class ManagementController {
     public static function missingQrColumn(PDOException $ex): bool {
         $info = $ex->errorInfo ?? [];
@@ -89,6 +90,15 @@ class ManagementController {
         $pageNumber=min($pageNumber,max(1,(int)ceil($total/$limit))); $offset=($pageNumber-1)*$limit;
         $stmt=db()->prepare('SELECT * FROM members'.$where.' ORDER BY created_at DESC, id DESC LIMIT '.$limit.' OFFSET '.$offset); $stmt->execute($params); $members=$stmt->fetchAll();
         $flash = $_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/members.php';
+    }
+    public function memberProfile(): void {
+        $role=$_SESSION['user']['role'];
+        if (!in_array($role,['Admin','Gérant','Réceptionniste','Coach','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        $id=filter_var($_GET['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Membre introuvable.'); }
+        $profile=(new MemberProfile(db()))->get($id,$role);
+        if (!$profile) { http_response_code(404); exit('Membre introuvable.'); }
+        $canWrite=$this->canWrite(); require __DIR__.'/../views/member_profile.php';
     }
     public function memberCard(): void {
         $this->requireWrite();
