@@ -210,6 +210,9 @@
       options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
         plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: c => c.parsed.y.toLocaleString('fr-FR', { minimumFractionDigits: 3 }) + ' DT' } } },
         scales: { x: { grid: { display: false }, border: { display: false } }, y: { beginAtZero: true, grid: { color: css('--border') }, border: { display: false }, ticks: { maxTicksLimit: 4, callback: v => v + ' DT' } } } } }));
+  }
+  if (window.dashboardData && $('#planChart')) {
+    const d = window.dashboardData;
     const has = d.planValues.some(Boolean);
     charts.push(new Chart($('#planChart'), { type: 'doughnut', data: { labels: d.planLabels, datasets: [{ data: has ? d.planValues : [1], backgroundColor: has ? palette : ['#3A3A3A'], borderWidth: 0, spacing: 4, borderRadius: 8, hoverOffset: 6 }] },
       options: { responsive: true, maintainAspectRatio: false, cutout: '78%', plugins: { legend: { display: false }, tooltip: { ...tooltip, enabled: has } } } }));

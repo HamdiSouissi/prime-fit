@@ -44,7 +44,7 @@ $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
 <div class="top-actions"><div class="top-date"><i data-lucide="calendar-days"></i> <?= e($__dateLabel) ?></div>
 <?php if (in_array($__role, ['Admin','Gérant','Réceptionniste','Comptable'], true)): ?><a class="quick-action" href="index.php?page=payments"><i data-lucide="plus"></i><span>Paiement</span></a><?php endif; ?>
 <?php if (in_array($__role, ['Admin','Gérant','Réceptionniste'], true)): ?><a class="quick-action" href="index.php?page=attendance"><i data-lucide="scan-line"></i><span>Pointage</span></a><?php endif; ?>
-<?php if (isset($data['expiring'])): ?><a class="notification" href="index.php?page=marketing" title="<?= (int)$data['expiring'] ?> abonnement(s) expirent bientôt" aria-label="<?= (int)$data['expiring'] ?> abonnement(s) expirent bientôt"><i data-lucide="bell"></i><?php if ($data['expiring']): ?><b></b><?php endif; ?></a><?php endif; ?>
+<?php if (isset($data['expiring']) && in_array($__role, ['Admin','Gérant','Réceptionniste'], true)): ?><a class="notification" href="index.php?page=marketing" title="<?= (int)$data['expiring'] ?> abonnement(s) expirent bientôt" aria-label="<?= (int)$data['expiring'] ?> abonnement(s) expirent bientôt"><i data-lucide="bell"></i><?php if ($data['expiring']): ?><b></b><?php endif; ?></a><?php endif; ?>
 <button class="icon-button" id="themeToggle" aria-label="Changer de thème"><i data-lucide="sun" class="i-sun"></i><i data-lucide="moon" class="i-moon"></i></button>
 <div class="top-profile"><div class="avatar gold"><?= e(mb_substr($__name,0,1)) ?></div><div><strong><?= e($__name) ?></strong><small><?= e($__role) ?></small></div></div></div></header>
 <main class="content" id="main">
