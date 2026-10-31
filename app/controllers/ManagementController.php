@@ -170,7 +170,7 @@ class ManagementController {
         $plans=db()->query('SELECT * FROM plans ORDER BY name')->fetchAll();
         $members=db()->query("SELECT id,first_name,last_name,card_number FROM members WHERE status='active' ORDER BY last_name,first_name")->fetchAll();
         $pageNumber=max(1,(int)($_GET['p'] ?? 1)); $total=(int)db()->query('SELECT COUNT(*) FROM subscriptions')->fetchColumn(); $pageNumber=min($pageNumber,max(1,(int)ceil($total/10))); $offset=($pageNumber-1)*10;
-        $subscriptions=db()->query('SELECT s.*,m.first_name,m.last_name,p.name AS plan FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id ORDER BY s.created_at DESC,s.id DESC LIMIT 10 OFFSET '.$offset)->fetchAll();
+        $subscriptions=db()->query('SELECT s.*,s.agreed_price,m.first_name,m.last_name,p.name AS plan FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id ORDER BY s.created_at DESC,s.id DESC LIMIT 10 OFFSET '.$offset)->fetchAll();
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/subscriptions.php';
     }
 }

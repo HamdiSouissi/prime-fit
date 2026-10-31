@@ -55,7 +55,7 @@ Les rôles Admin, Gérant et Réceptionniste peuvent créer et modifier les memb
 
 ## Paiements et caisse
 
-Admin, Gérant, Réceptionniste et Comptable peuvent accéder à la caisse et enregistrer un paiement partiel sur un abonnement. Le prix de la formule est utilisé pour calculer le solde ; un verrou SQL empêche deux paiements simultanés de dépasser ce montant. Les moyens de paiement tunisiens sont proposés. La caisse affiche les encaissements d’une date, ventilés par moyen, et chaque paiement possède un reçu imprimable (ou enregistrable en PDF via le navigateur). Ce reçu n’est **pas une facture fiscale** : TVA, timbre, numérotation fiscale et informations légales ne sont pas implémentés. Le prix d’une formule n’est pas encore figé dans l’abonnement : ne modifiez pas directement les prix dans la base après utilisation. Les annulations, remboursements et les ventes hors abonnement restent à développer.
+Admin, Gérant, Réceptionniste et Comptable peuvent accéder à la caisse et enregistrer un paiement partiel sur un abonnement. Le prix fixé à la création de l’abonnement est utilisé pour calculer le solde ; un verrou SQL empêche deux paiements simultanés de dépasser ce montant. Les moyens de paiement tunisiens sont proposés. La caisse affiche les encaissements d’une date, ventilés par moyen, et chaque paiement possède un reçu imprimable (ou enregistrable en PDF via le navigateur). Ce reçu n’est **pas une facture fiscale** : TVA, timbre, numérotation fiscale et informations légales ne sont pas implémentés. Les prix historiques non vérifiés doivent être régularisés avant de nouveaux encaissements ; voir la section dédiée. Les annulations, remboursements et les ventes hors abonnement restent à développer.
 
 ## Accès et présences
 
@@ -178,3 +178,19 @@ Depuis les détails d'un produit, Admin et Gérant peuvent modifier son nom, sa 
 Chaque utilisateur connecté peut changer son propre mot de passe via **Mon compte**, avec son mot de passe actuel et confirmation. Le nouveau mot de passe doit comprendre entre 12 et 72 octets (un caractère accentué peut compter pour plusieurs octets). Le changement et son journal sont enregistrés ensemble ; aucun mot de passe n'est enregistré dans le journal. La session courante et son jeton CSRF sont renouvelés. Les autres sessions sont invitées à se reconnecter à leur prochaine requête ; les requêtes déjà en cours ne sont pas interrompues. Les comptes inactifs sont bloqués lors de leur prochaine requête. Après cette mise à jour, les sessions existantes doivent se reconnecter une fois. Aucune migration SQL n'est nécessaire.
 
 La limitation des essais de connexion et de changement de mot de passe reste **par session uniquement**, contournable en créant une nouvelle session ; elle doit être complétée côté serveur avant production. La réinitialisation d'un mot de passe oublié, l'expiration d'inactivité, la double authentification et une gestion complète des comptes restent à développer. Utilisez HTTPS et remplacez le compte de démonstration avant tout déploiement.
+
+## Prix des abonnements et reprise historique
+
+**Sur une base existante**, sauvegardez d’abord la base puis, depuis la racine du projet, importez une seule fois :
+
+```bash
+mysql -u root -p prime_fit < database/subscription_prices.sql
+```
+
+Remplacez `prime_fit` par le nom de votre base si nécessaire. Les nouvelles installations utilisant le `schema.sql` actuel possèdent déjà la colonne : ne relancez pas cette migration si `subscriptions.agreed_price` existe. L'application mise à jour nécessite cette migration pour la gestion des abonnements et des paiements.
+
+Pour tout nouvel abonnement, le prix courant de la formule est figé lors de l'enregistrement. Un renouvellement utilise le prix et la durée actuels de la formule, et crée un nouvel abonnement sans paiement automatique. Les paiements sont contrôlés contre le prix figé, non contre le prix actuel du catalogue. Les prix ne se modifient pas depuis l'application après leur fixation.
+
+**Les anciens prix n'étaient pas historisés : ils ne peuvent pas être reconstitués automatiquement.** La migration les laisse indéterminés et les paiements supplémentaires sur ces abonnements sont bloqués. Admin ou Gérant doit consulter les contrats/justificatifs puis ouvrir « Abonnements → Vérifier les prix historiques » ou le lien équivalent dans la caisse, et saisir le prix convenu pour chaque abonnement. Le prix actuel de la formule est seulement une indication, pas une preuve du prix d'origine. Le prix est fixé une seule fois et journalisé ; si les paiements existants le dépassent, l'application refuse la validation et une vérification manuelle est nécessaire. Les paiements existants et leurs reçus ne sont ni supprimés ni modifiés par la migration.
+
+La correction d'un prix déjà fixé, les remboursements et la régularisation des trop-perçus ne sont pas encore implémentés dans l'interface. Testez le processus et les verrous de concurrence sur MySQL avant utilisation réelle.

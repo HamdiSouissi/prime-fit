@@ -31,13 +31,13 @@ class SubscriptionService {
         if ($stmt->fetch()) $this->fail('Les dates chevauchent un autre abonnement actif de ce membre.');
     }
     private function insert(int $member,int $plan,string $start,?int $renewedFrom=null): array {
-        $stmt=$this->db->prepare('SELECT duration_days FROM plans WHERE id=? AND is_active=1'); $stmt->execute([$plan]); $days=$stmt->fetchColumn();
+        $stmt=$this->db->prepare('SELECT duration_days,price FROM plans WHERE id=? AND is_active=1 FOR UPDATE'); $stmt->execute([$plan]); $planData=$stmt->fetch(); $days=$planData['duration_days'] ?? 0;
         if (!$days || (int)$days<1 || (int)$days>3650) $this->fail('Formule inactive ou invalide.');
         $date=DateTimeImmutable::createFromFormat('!Y-m-d',$start);
         if (!$date || $date->format('Y-m-d')!==$start || $start<'1900-01-01' || $start>'2099-12-31') $this->fail('Date de début invalide.');
         $end=$date->modify('+'.((int)$days-1).' days')->format('Y-m-d');
         $this->ensureNoOverlap($member,$start,$end);
-        $stmt=$this->db->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,status) VALUES (?,?,?,?,'active')"); $stmt->execute([$member,$plan,$start,$end]);
+        $stmt=$this->db->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,agreed_price,status) VALUES (?,?,?,?,?,'active')"); $stmt->execute([$member,$plan,$start,$end,$planData['price']]);
         $id=(int)$this->db->lastInsertId();
         $this->log(($renewedFrom ? 'Renouvellement abonnement #'.$renewedFrom.' vers #' : 'Abonnement créé #').$id);
         return ['id'=>$id,'start'=>$start,'end'=>$end];

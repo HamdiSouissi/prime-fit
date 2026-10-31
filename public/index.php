@@ -16,6 +16,7 @@ require __DIR__ . '/../app/controllers/FinanceController.php';
 require __DIR__ . '/../app/controllers/MarketingController.php';
 require __DIR__ . '/../app/controllers/ReportController.php';
 require __DIR__ . '/../app/controllers/SettingsController.php';
+require __DIR__ . '/../app/controllers/SubscriptionPriceController.php';
 $page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
 try {
     // Révoque les sessions périmées après changement de mot de passe ou désactivation.
@@ -35,6 +36,7 @@ try {
     elseif ($page === 'dashboard') { if (!isset($_SESSION['user'])) redirect('login'); (new DashboardController())->index(); }
     elseif ($page === 'member_profile') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberProfile(); }
     elseif ($page === 'member_card') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberCard(); }
+    elseif ($page === 'subscription_prices') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionPriceController())->index(); }
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }
     elseif (in_array($page, ['payments', 'receipt'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); else $controller->index(); }
     elseif ($page === 'attendance') { if (!isset($_SESSION['user'])) redirect('login'); (new AttendanceController())->index(); }
@@ -54,6 +56,8 @@ try {
         echo 'La base de données doit être mise à jour pour utiliser les cartes QR. Après sauvegarde, importez database/member_qr.sql dans la base utilisée par l’application, puis réessayez.';
     } elseif ($page === 'settings' && ($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'gym_settings') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_settings.sql dans la base utilisée, puis réessayez.';
+    } elseif (($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'agreed_price') !== false) {
+        echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_prices.sql dans la base utilisée. Les prix des anciens abonnements devront être vérifiés.';
     } else {
         echo 'Service indisponible. Vérifiez la configuration de la base de données et consultez les journaux du serveur.';
     }
