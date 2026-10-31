@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../services/MemberCardMailer.php';
+require_once __DIR__ . '/../services/SubscriptionService.php';
 class ManagementController {
     public static function missingQrColumn(PDOException $ex): bool {
         $info = $ex->errorInfo ?? [];
@@ -125,20 +126,35 @@ class ManagementController {
                 $name=trim($_POST['name'] ?? ''); $days=filter_var($_POST['duration_days'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>3650]]); $price=str_replace(',','.',trim($_POST['price'] ?? ''));
                 if ($name==='' || mb_strlen($name)>100 || !$days || !preg_match('/^\d{1,7}(\.\d{1,3})?$/',$price)) $error='Vérifiez le nom, la durée et le prix de la formule.';
                 else { db()->prepare('INSERT INTO plans (name,duration_days,price) VALUES (?,?,?)')->execute([$name,$days,$price]); $this->log('Formule créée #'.db()->lastInsertId()); $this->flash('Formule créée.'); redirect('subscriptions'); }
-            } elseif ($action === 'subscription') {
-                $member=filter_var($_POST['member_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $plan=filter_var($_POST['plan_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $start=$_POST['start_date'] ?? '';
-                $stmt=db()->prepare('SELECT duration_days FROM plans WHERE id=? AND is_active=1'); $stmt->execute([$plan ?: 0]); $days=$stmt->fetchColumn();
-                $stmt=db()->prepare("SELECT id FROM members WHERE id=? AND status='active'"); $stmt->execute([$member ?: 0]); $memberExists=$stmt->fetchColumn();
-                if (!$memberExists || !$days || !self::validDate($start)) $error='Sélectionnez un membre actif, une formule et une date valides.';
-                else {
-                    $end=(new DateTimeImmutable($start))->modify('+'.((int)$days-1).' days')->format('Y-m-d');
-                    db()->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,status) VALUES (?,?,?,?,'active')")->execute([$member,$plan,$start,$end]);
-                    $this->log('Abonnement créé #'.db()->lastInsertId()); $this->flash('Abonnement enregistré jusqu’au '.date('d/m/Y',strtotime($end)).'. Aucun paiement n’a été enregistré.'); redirect('subscriptions');
-                }
-            } elseif ($action === 'status') {
-                $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $status=$_POST['status'] ?? '';
-                if (!$id || !in_array($status,['active','frozen','cancelled'],true)) $error='Statut invalide.';
-                else { $stmt=db()->prepare('UPDATE subscriptions SET status=? WHERE id=?'); $stmt->execute([$status,$id]); $this->log('Statut abonnement #'.$id.' : '.$status); $this->flash('Statut mis à jour. Le gel ne prolonge pas automatiquement la date de fin.'); redirect('subscriptions'); }
+            } elseif (in_array($action, ['subscription','renew','freeze','resume','cancel'], true)) {
+                $service=new SubscriptionService(db(), (int)$_SESSION['user']['id'], $_SERVER['REMOTE_ADDR'] ?? '');
+                try {
+                    if ($action==='subscription') {
+                        $member=filter_var($_POST['member_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                        $plan=filter_var($_POST['plan_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                        $start=$_POST['start_date'] ?? '';
+                        if (!$member || !$plan || !is_string($start)) throw new DomainException('Sélectionnez un membre, une formule et une date valides.');
+                        $created=$service->create($member,$plan,$start);
+                        $this->flash('Abonnement enregistré jusqu’au '.date('d/m/Y',strtotime($created['end'])).'. Aucun paiement n’a été enregistré.');
+                    } else {
+                        $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                        if (!$id) throw new DomainException('Abonnement invalide.');
+                        if ($action==='renew') {
+                            $created=$service->renew($id);
+                            $this->flash('Renouvellement enregistré du '.date('d/m/Y',strtotime($created['start'])).' au '.date('d/m/Y',strtotime($created['end'])).'. Aucun paiement n’a été enregistré.');
+                        } elseif ($action==='freeze') { $service->freeze($id); $this->flash('Abonnement gelé à partir d’aujourd’hui.'); }
+                        elseif ($action==='resume') { $result=$service->resume($id); $this->flash('Abonnement réactivé : '.$result['days'].' jour(s) crédité(s), fin le '.date('d/m/Y',strtotime($result['end'])).'.'); }
+                        else { $service->cancel($id); $this->flash('Abonnement annulé. Aucun remboursement n’a été enregistré.'); }
+                    }
+                    redirect('subscriptions');
+                } catch (DomainException $ex) { $error=$ex->getMessage(); }
+                  catch (PDOException $ex) {
+                      $info=$ex->errorInfo ?? [];
+                      if (($info[0] ?? '')==='42S02' && (int)($info[1] ?? 0)===1146 && stripos((string)($info[2] ?? ''),'subscription_freezes')!==false) {
+                          error_log('Migration des gels manquante : '.$ex->getMessage());
+                          $error='La base doit être mise à jour : après sauvegarde, importez database/subscription_freezes.sql dans la base utilisée, puis réessayez.';
+                      } else throw $ex;
+                  }
             } else { http_response_code(400); exit('Action invalide.'); }
         }
         $plans=db()->query('SELECT * FROM plans ORDER BY name')->fetchAll();
