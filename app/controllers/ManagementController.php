@@ -141,17 +141,18 @@ class ManagementController {
                 try {
                     if ($action==='subscription') {
                         $member=filter_var($_POST['member_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
-                        $plan=filter_var($_POST['plan_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
-                        $start=$_POST['start_date'] ?? '';
-                        if (!$member || !$plan || !is_string($start)) throw new DomainException('Sélectionnez un membre, une formule et une date valides.');
-                        $created=$service->create($member,$plan,$start);
-                        $this->flash('Abonnement enregistré jusqu’au '.date('d/m/Y',strtotime($created['end'])).'. Aucun paiement n’a été enregistré.');
+                        $selection=$_POST['plan_id'] ?? ''; $start=$_POST['start_date'] ?? '';
+                        if (!$member || !is_string($selection) || !preg_match('/^(\d+)\|([a-f0-9]{64})$/D',$selection,$matches) || !is_string($start) || (int)$matches[1]<1) throw new DomainException('Sélectionnez un membre, une formule et une date valides.');
+                        $created=$service->create($member,(int)$matches[1],$start,$matches[2]);
+                        $this->flash('Abonnement enregistré jusqu’au '.date('d/m/Y',strtotime($created['end'])).', prix fixé : '.dt($created['price']).'. Aucun paiement n’a été enregistré.');
                     } else {
                         $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
                         if (!$id) throw new DomainException('Abonnement invalide.');
                         if ($action==='renew') {
-                            $created=$service->renew($id);
-                            $this->flash('Renouvellement enregistré du '.date('d/m/Y',strtotime($created['start'])).' au '.date('d/m/Y',strtotime($created['end'])).'. Aucun paiement n’a été enregistré.');
+                            $expected=$_POST['plan_version'] ?? '';
+                            if (!is_string($expected) || !preg_match('/^[a-f0-9]{64}$/D',$expected)) throw new DomainException('Rechargez la page et vérifiez la formule avant de renouveler.');
+                            $created=$service->renew($id,$expected);
+                            $this->flash('Renouvellement enregistré du '.date('d/m/Y',strtotime($created['start'])).' au '.date('d/m/Y',strtotime($created['end'])).', prix fixé : '.dt($created['price']).'. Aucun paiement n’a été enregistré.');
                         } elseif ($action==='freeze') { $service->freeze($id); $this->flash('Abonnement gelé à partir d’aujourd’hui.'); }
                         elseif ($action==='resume') { $result=$service->resume($id); $this->flash('Abonnement réactivé : '.$result['days'].' jour(s) crédité(s), fin le '.date('d/m/Y',strtotime($result['end'])).'.'); }
                         else { $service->cancel($id); $this->flash('Abonnement annulé. Aucun remboursement n’a été enregistré.'); }

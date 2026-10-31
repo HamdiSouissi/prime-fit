@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/PlanService.php';
 /** Les créations, renouvellements et gels sont sérialisés par membre puis abonnement. */
 class SubscriptionService {
     private PDO $db; private int $userId; private string $ip; private DateTimeImmutable $today;
@@ -30,9 +31,10 @@ class SubscriptionService {
         $stmt=$this->db->prepare("SELECT id FROM subscriptions WHERE member_id=? AND status='active' AND start_date<=? AND end_date>=? AND id<>? LIMIT 1"); $stmt->execute([$member,$end,$start,$exclude ?? 0]);
         if ($stmt->fetch()) $this->fail('Les dates chevauchent un autre abonnement actif de ce membre.');
     }
-    private function insert(int $member,int $plan,string $start,?int $renewedFrom=null): array {
-        $stmt=$this->db->prepare('SELECT duration_days,price FROM plans WHERE id=? AND is_active=1 FOR UPDATE'); $stmt->execute([$plan]); $planData=$stmt->fetch(); $days=$planData['duration_days'] ?? 0;
+    private function insert(int $member,int $plan,string $start,?int $renewedFrom=null,?string $expectedPlan=null): array {
+        $stmt=$this->db->prepare('SELECT id,name,duration_days,price,is_active FROM plans WHERE id=? AND is_active=1 FOR UPDATE'); $stmt->execute([$plan]); $planData=$stmt->fetch(); $days=$planData['duration_days'] ?? 0;
         if (!$days || (int)$days<1 || (int)$days>3650) $this->fail('Formule inactive ou invalide.');
+        if ($expectedPlan!==null && !hash_equals(PlanService::version($planData),$expectedPlan)) $this->fail('La formule a changé depuis l’ouverture de la page. Vérifiez son prix et sa durée avant de continuer.');
         $date=DateTimeImmutable::createFromFormat('!Y-m-d',$start);
         if (!$date || $date->format('Y-m-d')!==$start || $start<'1900-01-01' || $start>'2099-12-31') $this->fail('Date de début invalide.');
         $end=$date->modify('+'.((int)$days-1).' days')->format('Y-m-d');
@@ -40,18 +42,18 @@ class SubscriptionService {
         $stmt=$this->db->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,agreed_price,status) VALUES (?,?,?,?,?,'active')"); $stmt->execute([$member,$plan,$start,$end,$planData['price']]);
         $id=(int)$this->db->lastInsertId();
         $this->log(($renewedFrom ? 'Renouvellement abonnement #'.$renewedFrom.' vers #' : 'Abonnement créé #').$id);
-        return ['id'=>$id,'start'=>$start,'end'=>$end];
+        return ['id'=>$id,'start'=>$start,'end'=>$end,'price'=>$planData['price']];
     }
-    public function create(int $member,int $plan,string $start): array {
-        return $this->atomic(function() use ($member,$plan,$start) { $this->lockMember($member); return $this->insert($member,$plan,$start); });
+    public function create(int $member,int $plan,string $start,?string $expectedPlan=null): array {
+        return $this->atomic(function() use ($member,$plan,$start,$expectedPlan) { $this->lockMember($member); return $this->insert($member,$plan,$start,null,$expectedPlan); });
     }
-    public function renew(int $id): array {
-        return $this->atomic(function() use ($id) {
+    public function renew(int $id,?string $expectedPlan=null): array {
+        return $this->atomic(function() use ($id,$expectedPlan) {
             $s=$this->lockSubscription($id); $this->lockMember((int)$s['member_id']);
             if ($s['status']==='frozen') $this->fail('Réactivez ou annulez cet abonnement avant de le renouveler.');
             if ($s['status']==='cancelled') $this->fail('Un abonnement annulé ne peut pas être renouvelé. Créez une nouvelle adhésion.');
             $start=max($this->today->format('Y-m-d'),(new DateTimeImmutable($s['end_date']))->modify('+1 day')->format('Y-m-d'));
-            return $this->insert((int)$s['member_id'],(int)$s['plan_id'],$start,$id);
+            return $this->insert((int)$s['member_id'],(int)$s['plan_id'],$start,$id,$expectedPlan);
         });
     }
     public function freeze(int $id): void {

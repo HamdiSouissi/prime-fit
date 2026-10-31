@@ -17,6 +17,7 @@ require __DIR__ . '/../app/controllers/MarketingController.php';
 require __DIR__ . '/../app/controllers/ReportController.php';
 require __DIR__ . '/../app/controllers/SettingsController.php';
 require __DIR__ . '/../app/controllers/SubscriptionPriceController.php';
+require __DIR__ . '/../app/controllers/PlanController.php';
 $page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
 try {
     // Révoque les sessions périmées après changement de mot de passe ou désactivation.
@@ -36,6 +37,7 @@ try {
     elseif ($page === 'dashboard') { if (!isset($_SESSION['user'])) redirect('login'); (new DashboardController())->index(); }
     elseif ($page === 'member_profile') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberProfile(); }
     elseif ($page === 'member_card') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberCard(); }
+    elseif ($page === 'plan') { if (!isset($_SESSION['user'])) redirect('login'); (new PlanController())->index(); }
     elseif ($page === 'subscription_prices') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionPriceController())->index(); }
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }
     elseif (in_array($page, ['payments', 'receipt'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); else $controller->index(); }
