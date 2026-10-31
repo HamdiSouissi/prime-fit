@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../services/MemberCardMailer.php';
 require_once __DIR__ . '/../services/SubscriptionService.php';
 require_once __DIR__ . '/../services/MemberProfile.php';
+require_once __DIR__ . '/../services/SubscriptionLookup.php';
 class ManagementController {
     public static function missingQrColumn(PDOException $ex): bool {
         $info = $ex->errorInfo ?? [];
@@ -170,8 +171,18 @@ class ManagementController {
         }
         $plans=db()->query('SELECT * FROM plans ORDER BY name')->fetchAll();
         $members=db()->query("SELECT id,first_name,last_name,card_number FROM members WHERE status='active' ORDER BY last_name,first_name")->fetchAll();
-        $pageNumber=max(1,(int)($_GET['p'] ?? 1)); $total=(int)db()->query('SELECT COUNT(*) FROM subscriptions')->fetchColumn(); $pageNumber=min($pageNumber,max(1,(int)ceil($total/10))); $offset=($pageNumber-1)*10;
-        $subscriptions=db()->query('SELECT s.*,s.agreed_price,m.first_name,m.last_name,p.name AS plan FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id ORDER BY s.created_at DESC,s.id DESC LIMIT 10 OFFSET '.$offset)->fetchAll();
+        $q=is_string($_GET['q'] ?? null) ? $_GET['q'] : ''; $filter=is_string($_GET['filter'] ?? null) ? $_GET['filter'] : '';
+        $result=(new SubscriptionLookup(db()))->search($q,$filter,(int)($_GET['p'] ?? 1),date('Y-m-d'));
+        $q=$result['query']; $filter=$result['filter']; $total=$result['total']; $pageNumber=$result['page']; $subscriptions=$result['subscriptions'];
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/subscriptions.php';
     }
+    public function subscriptionDetail(): void {
+        if (!in_array($_SESSION['user']['role'],['Admin','Gérant','Réceptionniste','Coach','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        $id=filter_var($_GET['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Abonnement introuvable.'); }
+        $detail=(new SubscriptionLookup(db()))->detail($id,(int)($_GET['p'] ?? 1));
+        if (!$detail) { http_response_code(404); exit('Abonnement introuvable.'); }
+        require __DIR__.'/../views/subscription_detail.php';
+    }
+
 }

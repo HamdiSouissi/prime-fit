@@ -147,7 +147,7 @@ Depuis la liste des abonnements, Admin, Gérant et Réceptionniste peuvent renou
 
 Un abonnement actif en cours peut être gelé à partir du jour courant. À sa réactivation, la date de fin est prolongée du nombre de jours calendaires entre la date du gel et le jour de reprise : une reprise le même jour ajoute zéro jour, et la reprise le lendemain ajoute un jour. La reprise est refusée si la prolongation chevauche une autre adhésion active ; annulez ou régularisez d'abord le chevauchement. Les opérations sont transactionnelles, verrouillent le membre et sont journalisées. L'annulation d'un abonnement gelé clôt son gel sans prolongation et ne crée pas de remboursement.
 
-Les gels enregistrés par l'ancienne version n'avaient pas de date de début : ils ne peuvent pas être prolongés automatiquement. Leur régularisation nécessite de vérifier les dates réelles avec un administrateur ; ne pas inventer de durée. L'annulation reste possible mais ne crédite pas les jours passés. Les changements de formule lors du renouvellement, les paiements automatiques, les limites de gel et l'historique détaillé à l'écran restent à développer.
+Les gels enregistrés par l'ancienne version n'avaient pas de date de début : ils ne peuvent pas être prolongés automatiquement. Leur régularisation nécessite de vérifier les dates réelles avec un administrateur ; ne pas inventer de durée. L'annulation reste possible mais ne crédite pas les jours passés. Les changements de formule lors du renouvellement, les paiements automatiques et les limites de gel restent à développer.
 
 ## Paramètres de la salle
 
@@ -200,3 +200,9 @@ La correction d'un prix déjà fixé, les remboursements et la régularisation d
 Dans **Abonnements → Formules disponibles → Gérer**, Admin et Gérant peuvent modifier le nom, la durée et le prix d’une formule, ou la désactiver/réactiver. La création reste accessible à la Réception. Les changements sont journalisés. Une formule inactive ne peut pas être utilisée pour une nouvelle adhésion ou un renouvellement, mais les abonnements existants restent inchangés.
 
 Le prix et les dates déjà fixés sur les abonnements ne changent pas ; un renouvellement utilise le tarif et la durée affichés pour la formule active. Si la formule change pendant l'ouverture du formulaire, la souscription ou le renouvellement est refusé pour permettre une nouvelle vérification. Le nom de la formule n'est pas historisé : les anciens abonnements et reçus affichent le nom actuel. La modification ne corrige pas les prix des abonnements anciens non vérifiés. Aucune migration supplémentaire n'est nécessaire ; la migration `subscription_prices.sql` reste requise sur les bases existantes qui ne l'ont pas encore reçue.
+
+### Recherche et historique des abonnements
+
+La liste des abonnements est recherchable par nom, numéro de carte ou formule et filtrable par situation : en cours, à venir, expiré, gelé ou annulé. Le statut tient compte des dates actuelles pour les abonnements actifs. Tous les rôles ayant accès aux abonnements peuvent ouvrir **Détails** pour voir la période actuelle, le prix fixé et l'historique paginé des gels : début, fin, état, jours crédités et auteurs lorsqu'ils sont connus. La fin d'un gel annulé correspond à l'annulation de l'abonnement, pas à une reprise.
+
+Les anciens gels sans date ne sont pas reconstitués ; un avertissement apparaît lorsqu'un abonnement gelé n'a pas de gel ouvert. Les dates et le nom de formule affichés reflètent l'état actuel, pas un instantané historique. Cette fonctionnalité ne nécessite pas de nouvelle migration, mais les installations existantes doivent avoir reçu les migrations `subscription_freezes.sql` et `subscription_prices.sql` si elles ne sont pas déjà présentes.
