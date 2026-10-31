@@ -51,7 +51,7 @@ Fiches membres enrichies (photo, historique et certificat), renouvellement guid�
 
 ## Membres et abonnements
 
-Les rôles Admin, Gérant et Réceptionniste peuvent créer et modifier les membres, ajouter des formules et abonnements et changer leur statut. Coach et Comptable disposent ici d’un accès en lecture seule. La liste des membres est recherchable et paginée. Un abonnement créé ne génère aucun encaissement. Le gel est un statut manuel : il ne décale pas automatiquement la date de fin. Les abonnements peuvent se chevaucher ; leur contrôle et le renouvellement guidé restent à développer. La liste noire est prise en compte lors du pointage.
+Les rôles Admin, Gérant et Réceptionniste peuvent créer et modifier les membres, ajouter des formules et abonnements et changer leur statut. Coach et Comptable disposent ici d’un accès en lecture seule. La liste des membres est recherchable et paginée. À la création, le serveur attribue un numéro de carte unique automatiquement ; il ne peut pas être modifié depuis la fiche. Les anciens numéros restent inchangés (y compris les éventuelles fiches sans numéro). Un abonnement créé ne génère aucun encaissement. Le gel est un statut manuel : il ne décale pas automatiquement la date de fin. Les abonnements peuvent se chevaucher ; leur contrôle et le renouvellement guidé restent à développer. La liste noire est prise en compte lors du pointage.
 
 ## Paiements et caisse
 

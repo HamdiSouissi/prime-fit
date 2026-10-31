@@ -12,20 +12,31 @@ class ManagementController {
             verify_csrf(); $this->requireWrite();
             $id = filter_var($_POST['id'] ?? 0, FILTER_VALIDATE_INT, ['options'=>['min_range'=>0]]);
             $first = trim($_POST['first_name'] ?? ''); $last = trim($_POST['last_name'] ?? '');
-            $phone = trim($_POST['phone'] ?? ''); $email = trim($_POST['email'] ?? ''); $card = trim($_POST['card_number'] ?? '');
+            $phone = trim($_POST['phone'] ?? ''); $email = trim($_POST['email'] ?? '');
             $governorate = trim($_POST['governorate'] ?? ''); $birth = trim($_POST['birth_date'] ?? ''); $status = $_POST['status'] ?? 'active';
-            $editing = compact('id','first','last','phone','email','card','governorate','birth','status');
-            if ($id === false || $first === '' || $last === '' || mb_strlen($first)>100 || mb_strlen($last)>100 || mb_strlen($phone)>30 || mb_strlen($card)>50 || mb_strlen($governorate)>80 || mb_strlen($email)>190 || ($email !== '' && !filter_var($email,FILTER_VALIDATE_EMAIL)) || !in_array($status,['active','inactive','blacklisted'],true) || ($birth !== '' && !self::validDate($birth))) {
+            $editing = compact('id','first','last','phone','email','governorate','birth','status');
+            if ($id === false || $first === '' || $last === '' || mb_strlen($first)>100 || mb_strlen($last)>100 || mb_strlen($phone)>30 || mb_strlen($governorate)>80 || mb_strlen($email)>190 || ($email !== '' && !filter_var($email,FILTER_VALIDATE_EMAIL)) || !in_array($status,['active','inactive','blacklisted'],true) || ($birth !== '' && !self::validDate($birth))) {
                 $error = 'Vérifiez les champs : nom et prénom sont obligatoires, et les coordonnées doivent être valides.';
             } else {
                 try {
                     if ($id) {
-                        $stmt = db()->prepare('UPDATE members SET first_name=?, last_name=?, phone=?, email=?, card_number=?, governorate=?, birth_date=?, status=? WHERE id=?');
-                        $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$card ?: null,$governorate ?: null,$birth ?: null,$status,$id]);
+                        $stmt = db()->prepare('UPDATE members SET first_name=?, last_name=?, phone=?, email=?, governorate=?, birth_date=?, status=? WHERE id=?');
+                        $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$governorate ?: null,$birth ?: null,$status,$id]);
                     } else {
                         $pdo = db(); $pdo->beginTransaction();
                         try {
-                            $pdo->prepare('INSERT INTO members (first_name,last_name,phone,email,card_number,governorate,birth_date,status,qr_token) VALUES (?,?,?,?,?,?,?,?,?)')->execute([$first,$last,$phone ?: null,$email ?: null,$card ?: null,$governorate ?: null,$birth ?: null,$status,bin2hex(random_bytes(32))]);
+                            // Le numéro est produit côté serveur et garanti unique par l'index SQL.
+                            // En cas de collision, réessayer avec un nouveau numéro et un nouveau QR.
+                            $stmt = $pdo->prepare('INSERT INTO members (first_name,last_name,phone,email,card_number,governorate,birth_date,status,qr_token) VALUES (?,?,?,?,?,?,?,?,?)');
+                            for ($attempt = 0; $attempt < 5; $attempt++) {
+                                $card = 'PF-' . random_int(10000000, 99999999) . random_int(10000000, 99999999);
+                                try {
+                                    $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$card,$governorate ?: null,$birth ?: null,$status,bin2hex(random_bytes(32))]);
+                                    break;
+                                } catch (PDOException $ex) {
+                                    if ($ex->getCode() !== '23000' || (int)($ex->errorInfo[1] ?? 0) !== 1062 || $attempt === 4) throw $ex;
+                                }
+                            }
                             $id = (int)$pdo->lastInsertId();
                             $this->log('Fiche membre et carte QR créées #'.$id);
                             $pdo->commit();
@@ -33,7 +44,7 @@ class ManagementController {
                         $this->flash('Membre créé. Sa carte QR est prête à être imprimée.'); redirect('member_card&id='.$id);
                     }
                     $this->log('Fiche membre enregistrée #'.$id); $this->flash('Fiche membre enregistrée.'); redirect('members');
-                } catch (PDOException $ex) { if ($ex->getCode() !== '23000') throw $ex; $error = 'Ce numéro de carte est déjà utilisé.'; }
+                } catch (PDOException $ex) { if ($ex->getCode() !== '23000') throw $ex; $error = 'Impossible de créer le membre. Veuillez réessayer.'; }
             }
         } elseif (isset($_GET['edit']) && $canWrite) {
             $stmt = db()->prepare('SELECT * FROM members WHERE id=?'); $stmt->execute([(int)$_GET['edit']]); $member = $stmt->fetch();
