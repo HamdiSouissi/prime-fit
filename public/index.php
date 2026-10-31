@@ -14,6 +14,7 @@ require __DIR__ . '/../app/controllers/EquipmentController.php';
 require __DIR__ . '/../app/controllers/FinanceController.php';
 require __DIR__ . '/../app/controllers/MarketingController.php';
 require __DIR__ . '/../app/controllers/ReportController.php';
+require __DIR__ . '/../app/controllers/SettingsController.php';
 $page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
 try {
     if ($page === 'logout') { (new AuthController())->logout(); }
@@ -31,11 +32,14 @@ try {
     elseif (in_array($page, ['finance', 'finance_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new FinanceController(); if ($page === 'finance_export') $controller->export(); else $controller->index(); }
     elseif ($page === 'marketing') { if (!isset($_SESSION['user'])) redirect('login'); (new MarketingController())->index(); }
     elseif (in_array($page, ['reports', 'reports_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new ReportController(); if ($page === 'reports_export') $controller->export(); else $controller->index(); }
+    elseif ($page === 'settings') { if (!isset($_SESSION['user'])) redirect('login'); (new SettingsController())->index(); }
     else { http_response_code(404); echo 'Page introuvable'; }
 } catch (PDOException $ex) {
     error_log($ex->getMessage()); http_response_code(503);
     if (in_array($page, ['member_card', 'attendance'], true) && ManagementController::missingQrColumn($ex)) {
         echo 'La base de données doit être mise à jour pour utiliser les cartes QR. Après sauvegarde, importez database/member_qr.sql dans la base utilisée par l’application, puis réessayez.';
+    } elseif ($page === 'settings' && ($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'gym_settings') !== false) {
+        echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_settings.sql dans la base utilisée, puis réessayez.';
     } else {
         echo 'Service indisponible. Vérifiez la configuration de la base de données et consultez les journaux du serveur.';
     }

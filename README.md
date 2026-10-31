@@ -47,7 +47,7 @@ Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage e
 
 ## Étapes suivantes
 
-Fiches membres enrichies (photo, historique et certificat), amélioration des abonnements, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports avancés, paramètres et portail membre. Les exports PDF, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
+Fiches membres enrichies (photo, historique et certificat), amélioration des abonnements, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports avancés, paramètres avancés et portail membre. Les exports PDF, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
 
 ## Membres et abonnements
 
@@ -146,3 +146,15 @@ Depuis la liste des abonnements, Admin, Gérant et Réceptionniste peuvent renou
 Un abonnement actif en cours peut être gelé à partir du jour courant. À sa réactivation, la date de fin est prolongée du nombre de jours calendaires entre la date du gel et le jour de reprise : une reprise le même jour ajoute zéro jour, et la reprise le lendemain ajoute un jour. La reprise est refusée si la prolongation chevauche une autre adhésion active ; annulez ou régularisez d'abord le chevauchement. Les opérations sont transactionnelles, verrouillent le membre et sont journalisées. L'annulation d'un abonnement gelé clôt son gel sans prolongation et ne crée pas de remboursement.
 
 Les gels enregistrés par l'ancienne version n'avaient pas de date de début : ils ne peuvent pas être prolongés automatiquement. Leur régularisation nécessite de vérifier les dates réelles avec un administrateur ; ne pas inventer de durée. L'annulation reste possible mais ne crédite pas les jours passés. La modification des formules, les changements de formule lors du renouvellement, les paiements automatiques, les limites de gel et l'historique détaillé à l'écran restent à développer.
+
+## Paramètres de la salle
+
+Pour une installation existante, sauvegardez votre base et importez `database/gym_settings.sql` dans la base configurée. Avec Laragon et une base nommée `prime_fit`, la commande est :
+
+```bash
+mysql -u root -p prime_fit < database/gym_settings.sql
+```
+
+Les nouvelles installations utilisant `schema.sql` possèdent déjà cette table. Admin et Gérant peuvent enregistrer le téléphone, l'adresse, l'e-mail, le matricule fiscal, les horaires et les paramètres indicatifs de TVA et de timbre ; Comptable dispose d'un accès en lecture seule. Les coordonnées et le matricule actuellement configurés apparaissent sur les reçus, y compris les reçus anciens : ils ne sont pas figés par transaction.
+
+Le nom affiché en lecture seule est défini dans la configuration ; le changement dynamique de la marque, le logo, les sauvegardes et la gestion multi-salles restent à développer. Les champs TVA et timbre sont **informatifs uniquement** : ils n'entraînent aucun calcul ni ajout aux paiements, et les reçus ne sont pas des factures fiscales.

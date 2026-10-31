@@ -56,6 +56,13 @@ class PaymentController {
         if (!$id) { http_response_code(404); exit('Reçu introuvable.'); }
         $stmt=db()->prepare('SELECT pay.*,m.first_name,m.last_name,m.card_number,p.name AS plan FROM payments pay JOIN members m ON m.id=pay.member_id LEFT JOIN subscriptions s ON s.id=pay.subscription_id LEFT JOIN plans p ON p.id=s.plan_id WHERE pay.id=?'); $stmt->execute([$id]); $payment=$stmt->fetch();
         if (!$payment) { http_response_code(404); exit('Reçu introuvable.'); }
+        // La migration est facultative pour les anciennes installations.
+        try { $gymSettings=db()->query('SELECT address,phone,email,tax_id FROM gym_settings WHERE id=1')->fetch() ?: []; }
+        catch (PDOException $ex) {
+            $info=$ex->errorInfo ?? [];
+            if (($info[0] ?? '')==='42S02' && (int)($info[1] ?? 0)===1146 && stripos((string)($info[2] ?? ''),'gym_settings')!==false) $gymSettings=[];
+            else throw $ex;
+        }
         require __DIR__.'/../views/receipt.php';
     }
 }

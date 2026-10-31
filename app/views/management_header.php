@@ -21,6 +21,7 @@ $__items = [
     ['finance','finance','receipt','Dépenses & trésorerie',['Admin','Gérant','Comptable']],
     ['marketing','marketing','megaphone','Marketing',['Admin','Gérant','Réceptionniste']],
     ['reports','reports','chart-no-axes-combined','Rapports',['Admin','Gérant','Comptable']],
+    ['settings','settings','settings-2','Paramètres',['Admin','Gérant','Comptable']],
 ];
 $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
 ?>
@@ -34,7 +35,7 @@ $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
 <?php [$__sec,$__page,$__icon,$__label,$__roles] = $__it; if ($__roles !== null && !in_array($__role, $__roles, true)) continue; $__active = $section === $__sec; ?>
 <a class="nav-item<?= $__active ? ' active' : '' ?>" href="index.php?page=<?= e($__page) ?>" title="<?= e($__label) ?>"<?= $__active ? ' aria-current="page"' : '' ?>><i data-lucide="<?= e($__icon) ?>"></i><span><?= e($__label) ?></span></a>
 <?php endforeach; ?>
-<span class="nav-item disabled" title="Bientôt disponible"><i data-lucide="settings-2"></i><span>Paramètres</span></span></nav>
+</nav>
 <div class="side-profile"><div class="avatar gold"><?= e(mb_substr($__name,0,1)) ?></div><div><strong><?= e($__name) ?></strong><small><?= e($__role) ?></small></div><form method="post" action="index.php?page=logout"><input type="hidden" name="csrf" value="<?= e(csrf()) ?>"><button title="Se déconnecter" aria-label="Se déconnecter"><i data-lucide="log-out"></i></button></form></div></aside>
 <div class="backdrop" id="backdrop"></div>
 <div class="main-wrap"><header class="topbar"><button class="icon-button menu-toggle" id="menuToggle" aria-label="Afficher ou réduire le menu" aria-controls="sidebar" aria-expanded="true"><i data-lucide="panel-left"></i></button><div class="breadcrumb">Espace de gestion <span>/</span> <strong><?= e($title) ?></strong></div>
