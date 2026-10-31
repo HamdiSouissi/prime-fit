@@ -8,6 +8,7 @@ require __DIR__ . '/../app/controllers/PaymentController.php';
 require __DIR__ . '/../app/controllers/AttendanceController.php';
 require __DIR__ . '/../app/controllers/CourseController.php';
 require __DIR__ . '/../app/controllers/CoachController.php';
+require __DIR__ . '/../app/controllers/FitnessController.php';
 $page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
 try {
     if ($page === 'logout') { (new AuthController())->logout(); }
@@ -18,6 +19,7 @@ try {
     elseif ($page === 'attendance') { if (!isset($_SESSION['user'])) redirect('login'); (new AttendanceController())->index(); }
     elseif ($page === 'courses') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseController())->index(); }
     elseif ($page === 'coaches') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachController())->index(); }
+    elseif ($page === 'fitness') { if (!isset($_SESSION['user'])) redirect('login'); (new FitnessController())->index(); }
     else { http_response_code(404); echo 'Page introuvable'; }
 } catch (PDOException $ex) {
     error_log($ex->getMessage()); http_response_code(503); echo 'Service indisponible. Vérifiez la configuration de la base de données.';

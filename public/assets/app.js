@@ -5,6 +5,10 @@
   toggle?.addEventListener('click', () => { document.body.classList.toggle('light'); localStorage.setItem('prime-theme', document.body.classList.contains('light') ? 'light' : 'dark'); });
   document.getElementById('menuToggle')?.addEventListener('click', () => document.getElementById('sidebar').classList.toggle('open'));
   document.addEventListener('click', e => { if (innerWidth <= 760 && !e.target.closest('#sidebar') && !e.target.closest('#menuToggle')) document.getElementById('sidebar')?.classList.remove('open'); });
+  if (window.Chart && window.fitnessData && document.getElementById('fitnessChart')) {
+    const data = window.fitnessData;
+    new Chart(document.getElementById('fitnessChart'), {type:'line',data:{labels:data.labels,datasets:[{label:'Poids (kg)',data:data.values,borderColor:'#d8bb70',backgroundColor:'rgba(216,187,112,.12)',fill:true,tension:.3,pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,grid:{color:'rgba(140,155,140,.1)'}},x:{grid:{display:false}}}}});
+  }
   if (!window.Chart || !window.dashboardData) return;
   const d = window.dashboardData;
   Chart.defaults.color = '#899589'; Chart.defaults.font.family = 'DM Sans'; Chart.defaults.font.size = 10;
