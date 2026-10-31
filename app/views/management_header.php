@@ -22,6 +22,7 @@ $__items = [
     ['marketing','marketing','megaphone','Marketing',['Admin','Gérant','Réceptionniste']],
     ['reports','reports','chart-no-axes-combined','Rapports',['Admin','Gérant','Comptable']],
     ['settings','settings','settings-2','Paramètres',['Admin','Gérant','Comptable']],
+    ['account','account','shield-check','Mon compte',null],
 ];
 $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
 ?>

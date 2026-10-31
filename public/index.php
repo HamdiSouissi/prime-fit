@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/../app/core/bootstrap.php';
 require __DIR__ . '/../app/controllers/AuthController.php';
+require __DIR__ . '/../app/controllers/AccountController.php';
 require __DIR__ . '/../app/controllers/DashboardController.php';
 require __DIR__ . '/../app/controllers/ManagementController.php';
 require __DIR__ . '/../app/controllers/PaymentController.php';
@@ -17,8 +18,20 @@ require __DIR__ . '/../app/controllers/ReportController.php';
 require __DIR__ . '/../app/controllers/SettingsController.php';
 $page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
 try {
+    // Révoque les sessions périmées après changement de mot de passe ou désactivation.
+    if (isset($_SESSION['user']) && !in_array($page, ['login','logout'], true)) {
+        $stmt = db()->prepare('SELECT id,name,email,role,is_active,password_hash FROM users WHERE id=?');
+        $stmt->execute([(int)$_SESSION['user']['id']]); $sessionUser = $stmt->fetch();
+        $fingerprint = $_SESSION['auth_fingerprint'] ?? '';
+        if (!$sessionUser || !$sessionUser['is_active'] || !is_string($fingerprint) || !hash_equals(hash('sha256', $sessionUser['password_hash']), $fingerprint)) {
+            $_SESSION = []; session_regenerate_id(true);
+            $_SESSION['login_notice'] = 'Session expirée ou compte modifié. Veuillez vous reconnecter.'; redirect('login');
+        }
+        unset($sessionUser['password_hash']); $_SESSION['user'] = $sessionUser;
+    }
     if ($page === 'logout') { (new AuthController())->logout(); }
     elseif ($page === 'login') { if (isset($_SESSION['user'])) redirect('dashboard'); (new AuthController())->login(); }
+    elseif ($page === 'account') { if (!isset($_SESSION['user'])) redirect('login'); (new AccountController())->index(); }
     elseif ($page === 'dashboard') { if (!isset($_SESSION['user'])) redirect('login'); (new DashboardController())->index(); }
     elseif ($page === 'member_card') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberCard(); }
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }

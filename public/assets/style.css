@@ -527,3 +527,4 @@ footer span:last-child{margin-left:auto}
 .subscription-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.subscription-actions form{margin:0}.subscription-actions .link-button{white-space:nowrap}
 .settings-form{margin-top:24px}.settings-form input[readonly],.settings-form :disabled{opacity:.72;cursor:not-allowed}.settings-panel{margin-top:16px}
 .inventory-actions{margin-top:24px}.inventory-actions .form-card{padding:16px;border:1px solid var(--border);border-radius:var(--r)}.inventory-toggle{margin-top:10px}.inventory-history-title{margin-top:26px}
+.account-card{max-width:760px}.account-form{margin-top:24px}

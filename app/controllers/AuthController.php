@@ -12,7 +12,7 @@ class AuthController {
                 $stmt = db()->prepare('SELECT id, name, email, password_hash, role, is_active FROM users WHERE email = ? LIMIT 1');
                 $stmt->execute([trim($_POST['email'] ?? '')]); $user = $stmt->fetch();
                 if ($user && $user['is_active'] && password_verify($_POST['password'] ?? '', $user['password_hash'])) {
-                    session_regenerate_id(true); unset($user['password_hash']); $_SESSION['user'] = $user; unset($_SESSION['login_attempts']);
+                    session_regenerate_id(true); $_SESSION['auth_fingerprint'] = hash('sha256', $user['password_hash']); unset($user['password_hash']); $_SESSION['user'] = $user; unset($_SESSION['login_attempts']);
                     db()->prepare('INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, ?, ?)')->execute([$user['id'], 'Connexion', substr($_SERVER['REMOTE_ADDR'] ?? '', 0, 45)]);
                     redirect('dashboard');
                 }
