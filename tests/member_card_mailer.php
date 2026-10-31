@@ -9,7 +9,7 @@ if ($mailer->send($member)!=='accepted' || !$sent || $sent['to']!==$member['emai
 if (!str_contains($sent['headers'],'multipart/mixed') || !str_contains($sent['body'],'Content-Type: image/png') || str_contains($sent['body'],$member['qr_token'])) throw new RuntimeException('MIME invalide');
 if (!str_contains($sent['body'],'multipart/alternative') || !str_contains($sent['body'],'multipart/related') || !preg_match('/Content-Type: text\/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+)/',$sent['body'],$htmlMatch)) throw new RuntimeException('Version HTML absente');
 $html=base64_decode($htmlMatch[1],true);
-if (!$html || !str_contains($html,'Amine Ben &lt;Salah&gt;') || str_contains($html,'<Salah>') || !str_contains($html,'PF-123') || !str_contains($html,'31/10/2026') || !str_contains($html,'src="cid:') || !preg_match('/Content-ID: <[^>]+>/', $sent['body'])) throw new RuntimeException('Carte HTML incorrecte');
+if (!$html || !str_contains($html,'Horizon Sportif de Bir El Hafey') || !str_contains($sent['subject'],'Horizon Sportif de Bir El Hafey') || !str_contains($html,'Amine Ben &lt;Salah&gt;') || str_contains($html,'<Salah>') || !str_contains($html,'PF-123') || !str_contains($html,'31/10/2026') || !str_contains($html,'src="cid:') || !preg_match('/Content-ID: <[^>]+>/', $sent['body'])) throw new RuntimeException('Carte HTML incorrecte');
 if (!preg_match('/Content-Type: image\/png;[^\r]+\r\nContent-Disposition:[^\r]+\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+)/',$sent['body'],$matches)) throw new RuntimeException('Pièce jointe absente');
 $png=base64_decode($matches[1],true);
 if ($png===false || substr($png,0,8)!=="\x89PNG\r\n\x1a\n") throw new RuntimeException('PNG invalide');

@@ -13,6 +13,6 @@
     if (!canvas) { error.hidden = false; error.textContent = 'Téléchargement indisponible. Utilisez l’impression de la carte.'; window.PrimeNotify?.show('error', error.textContent, {source: error}); return; }
     const padded = document.createElement('canvas'); padded.width = canvas.width + 48; padded.height = canvas.height + 48;
     const context = padded.getContext('2d'); context.fillStyle = '#fff'; context.fillRect(0, 0, padded.width, padded.height); context.drawImage(canvas, 24, 24);
-    const link = document.createElement('a'); link.download = 'carte-prime-fit-qr.png'; link.href = padded.toDataURL('image/png'); link.click();
+    const link = document.createElement('a'); link.download = 'carte-horizon-sportif-qr.png'; link.href = padded.toDataURL('image/png'); link.click();
   });
 })();

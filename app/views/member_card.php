@@ -14,7 +14,7 @@ require __DIR__.'/management_header.php';
 </div>
 <div class="member-card-layout">
   <article class="member-card-preview" aria-label="Carte adhérent">
-    <div class="member-card-brand">PRIME<span>FIT</span><small>CARTE D’ADHÉRENT</small></div>
+    <div class="member-card-brand">HORIZON <span>SPORTIF</span><small>DE BIR EL HAFEY · CARTE D’ADHÉRENT</small></div>
     <p class="member-card-label">MEMBRE</p>
     <h2><?= e($member['first_name'].' '.$member['last_name']) ?></h2>
     <p class="member-card-number">N° <?= e($member['card_number'] ?: 'Membre #'.$member['id']) ?></p>

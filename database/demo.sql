@@ -1,6 +1,6 @@
 USE prime_fit;
 -- À importer une seule fois, après schema.sql, sur une base vierge.
-INSERT INTO users (name,email,password_hash,role) VALUES ('Admin Prime Fit','admin@primefit.tn','$2b$12$eqtB/h6qqfdRC8liK7AdfOkqeUwhIm85WwBOqULPdi/nyQruMODMu','Admin');
+INSERT INTO users (name,email,password_hash,role) VALUES ('Admin Horizon','admin@primefit.tn','$2b$12$eqtB/h6qqfdRC8liK7AdfOkqeUwhIm85WwBOqULPdi/nyQruMODMu','Admin');
 INSERT INTO plans (name,duration_days,price) VALUES ('Mensuel',30,90.000),('Trimestriel',90,240.000),('Annuel',365,850.000),('Séances',30,65.000);
 INSERT INTO members (first_name,last_name,phone,email,card_number,governorate,avatar_color) VALUES
 ('Amine','Ben Salah','+216 98 234 567','amine@example.tn','PF-1001','Tunis','violet'),('Mariem','Trabelsi','+216 22 456 789','mariem@example.tn','PF-1002','Sousse','rose'),('Youssef','Mansouri','+216 55 123 456','youssef@example.tn','PF-1003','Sfax','blue'),('Inès','Gharbi','+216 20 345 678','ines@example.tn','PF-1004','Monastir','green'),('Sarra','Chérif','+216 99 876 543','sarra@example.tn','PF-1005','Nabeul','gold'),('Ahmed','Khaldi','+216 26 567 890','ahmed@example.tn','PF-1006','Tunis','blue');

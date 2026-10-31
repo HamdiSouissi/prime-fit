@@ -21,14 +21,14 @@ class MemberCardMailer {
             $alternative = 'alt_' . bin2hex(random_bytes(16));
             $related = 'related_' . bin2hex(random_bytes(16));
             $cid = 'qr_' . bin2hex(random_bytes(12)) . '@primefit.local';
-            $subject = 'Votre carte de membre Prime Fit';
+            $subject = 'Votre carte de membre Horizon Sportif de Bir El Hafey';
             $name = trim(($member['first_name'] ?? '') . ' ' . ($member['last_name'] ?? ''));
             $card = $member['card_number'] ?: 'Non renseigné';
             $date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', (string)($member['created_at'] ?? ''));
             $dateLabel = $date ? $date->format('d/m/Y') : 'Non renseignée';
-            $bodyText = "Bonjour " . $name . ",\r\n\r\nBienvenue chez Prime Fit ! Voici votre carte de membre.\r\n" .
+            $bodyText = "Bonjour " . $name . ",\r\n\r\nBienvenue chez Horizon Sportif de Bir El Hafey ! Voici votre carte de membre.\r\n" .
                 'Nom : ' . $name . "\r\nNuméro de carte : " . $card . "\r\nDate d’enregistrement : " . $dateLabel .
-                "\r\n\r\nPrésentez le QR joint à l’accueil pour votre pointage. Ce code est personnel : ne le partagez pas. En cas de perte, contactez votre salle.\r\n\r\nL’équipe Prime Fit";
+                "\r\n\r\nPrésentez le QR joint à l’accueil pour votre pointage. Ce code est personnel : ne le partagez pas. En cas de perte, contactez votre salle.\r\n\r\nL’équipe Horizon Sportif de Bir El Hafey";
             $html = self::renderCardEmail($name, $card, $dateLabel, $cid);
             $headers = "From: " . $from . "\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"" . $boundary . "\"";
             // HTML avec image CID intégrée, version texte et pièce jointe indépendante.
@@ -38,11 +38,11 @@ class MemberCardMailer {
                 "--$related\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($html)) .
                 "\r\n--$related\r\nContent-Type: image/png\r\nContent-ID: <$cid>\r\nContent-Disposition: inline; filename=\"qr-inline.png\"\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($png)) .
                 "\r\n--$related--\r\n--$alternative--\r\n" .
-                "--$boundary\r\nContent-Type: image/png; name=\"carte-prime-fit.png\"\r\nContent-Disposition: attachment; filename=\"carte-prime-fit.png\"\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($png)) . "\r\n--$boundary--\r\n";
+                "--$boundary\r\nContent-Type: image/png; name=\"carte-horizon-sportif.png\"\r\nContent-Disposition: attachment; filename=\"carte-horizon-sportif.png\"\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($png)) . "\r\n--$boundary--\r\n";
             return ($this->transport)($member['email'], $subject, $body, $headers) ? 'accepted' : 'failed';
         } catch (Throwable $ex) {
             // Ne jamais journaliser l'adresse du membre ni le jeton QR.
-            error_log('Prime Fit : impossible de préparer ou envoyer la carte QR par e-mail.');
+            error_log('Horizon Sportif de Bir El Hafey : impossible de préparer ou envoyer la carte QR par e-mail.');
             return 'failed';
         }
     }
@@ -52,18 +52,18 @@ class MemberCardMailer {
         $name=$escape($name); $card=$escape($card); $date=$escape($date); $cid=$escape($cid);
         return <<<HTML
 <!doctype html>
-<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Votre carte Prime Fit</title></head>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Votre carte Horizon Sportif de Bir El Hafey</title></head>
 <body style="margin:0;padding:0;background:#0a0a0a;color:#ffffff;font-family:Arial,Helvetica,sans-serif;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#0a0a0a;"><tr><td align="center" style="padding:32px 14px;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#151515;border:1px solid #303030;">
 <tr><td style="background:#000000;padding:24px 28px;border-bottom:4px solid #ffd400;">
-<span style="font-family:Arial,sans-serif;font-size:25px;font-weight:900;letter-spacing:1px;color:#ffffff;">PRIME<span style="color:#ffd400;">FIT</span></span><br>
+<span style="font-family:Arial,sans-serif;font-size:25px;font-weight:900;letter-spacing:1px;color:#ffffff;">HORIZON <span style="color:#ffd400;">SPORTIF</span></span><br><span style="font-size:13px;font-weight:bold;letter-spacing:1px;color:#ffffff;">DE BIR EL HAFEY</span><br>
 <span style="font-size:10px;letter-spacing:2.5px;color:#a3a3a3;">MANAGEMENT · TUNISIE</span>
 </td></tr>
 <tr><td style="padding:32px 28px 12px;">
 <p style="margin:0 0 12px;color:#ffd400;font-size:11px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;">BIENVENUE DANS L’ÉQUIPE</p>
 <h1 style="margin:0 0 16px;font-size:30px;line-height:1.15;text-transform:uppercase;color:#ffffff;">Votre carte est prête.</h1>
-<p style="margin:0;color:#d1d1d1;font-size:15px;line-height:1.6;">Bonjour {$name},<br>Nous sommes ravis de vous accueillir chez Prime Fit. Votre carte personnelle vous accompagne à chaque séance.</p>
+<p style="margin:0;color:#d1d1d1;font-size:15px;line-height:1.6;">Bonjour {$name},<br>Nous sommes ravis de vous accueillir chez Horizon Sportif de Bir El Hafey. Votre carte personnelle vous accompagne à chaque séance.</p>
 </td></tr>
 <tr><td align="center" style="padding:20px 28px 12px;">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:450px;background:#202020;border:1px solid #444444;">
@@ -71,7 +71,7 @@ class MemberCardMailer {
 <tr><td align="center" style="padding:24px 18px 26px;">
 <p style="margin:0 0 7px;color:#ffd400;font-size:10px;font-weight:bold;letter-spacing:2px;">CARTE D’ADHÉRENT</p>
 <p style="margin:0 0 18px;color:#ffffff;font-size:22px;font-weight:bold;line-height:1.2;">{$name}</p>
-<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;"><tr><td style="padding:16px;"><img src="cid:{$cid}" width="210" height="210" alt="QR code personnel de votre carte Prime Fit" style="display:block;width:210px;height:210px;max-width:100%;border:0;"></td></tr></table>
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;"><tr><td style="padding:16px;"><img src="cid:{$cid}" width="210" height="210" alt="QR code personnel de votre carte Horizon Sportif de Bir El Hafey" style="display:block;width:210px;height:210px;max-width:100%;border:0;"></td></tr></table>
 <p style="margin:20px 0 5px;color:#a3a3a3;font-size:10px;font-weight:bold;letter-spacing:1.3px;">NUMÉRO DE CARTE</p>
 <p style="margin:0;color:#ffffff;font-size:16px;font-weight:bold;word-break:break-all;">{$card}</p>
 <p style="margin:16px 0 5px;color:#a3a3a3;font-size:10px;font-weight:bold;letter-spacing:1.3px;">DATE D’ENREGISTREMENT</p>
@@ -80,7 +80,7 @@ class MemberCardMailer {
 <tr><td style="padding:16px 28px 30px;"><p style="margin:0 0 12px;color:#ffffff;font-size:14px;font-weight:bold;">COMMENT UTILISER VOTRE CARTE ?</p>
 <p style="margin:0;color:#bfbfbf;font-size:14px;line-height:1.6;">Présentez votre QR code à l’accueil depuis votre téléphone. Vous pouvez aussi retrouver le QR en pièce jointe si l’image ne s’affiche pas.</p>
 <p style="margin:18px 0 0;padding:14px;border-left:3px solid #ffd400;background:#252525;color:#cccccc;font-size:13px;line-height:1.5;">Ce code est personnel. Ne le partagez pas et contactez votre salle en cas de perte.</p></td></tr>
-<tr><td style="padding:20px 28px;border-top:1px solid #333333;color:#8f8f8f;font-size:12px;line-height:1.5;">À très bientôt,<br><strong style="color:#ffffff;">L’équipe PRIME FIT</strong><br><span style="font-size:10px;letter-spacing:1px;">ENSEMBLE, PLUS LOIN.</span></td></tr>
+<tr><td style="padding:20px 28px;border-top:1px solid #333333;color:#8f8f8f;font-size:12px;line-height:1.5;">À très bientôt,<br><strong style="color:#ffffff;">L’équipe HORIZON SPORTIF DE BIR EL HAFEY</strong><br><span style="font-size:10px;letter-spacing:1px;">ENSEMBLE, PLUS LOIN.</span></td></tr>
 </table></td></tr></table></body></html>
 HTML;
     }

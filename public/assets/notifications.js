@@ -5,7 +5,7 @@
   dialog.className = 'prime-popup';
   dialog.setAttribute('aria-labelledby', 'prime-popup-title');
   dialog.setAttribute('aria-describedby', 'prime-popup-message');
-  dialog.innerHTML = '<div class="prime-popup-accent"></div><div class="prime-popup-inner"><div class="prime-popup-head"><div class="prime-popup-icon" aria-hidden="true"></div><button type="button" class="prime-popup-close" aria-label="Fermer">×</button></div><div class="prime-popup-kicker">PRIME FIT · NOTIFICATION</div><h2 id="prime-popup-title"></h2><p id="prime-popup-message"></p><div class="prime-popup-member" hidden></div><div class="prime-popup-actions"><button type="button" class="prime-popup-cancel">Annuler</button><button type="button" class="primary prime-popup-accept">Compris</button></div></div>';
+  dialog.innerHTML = '<div class="prime-popup-accent"></div><div class="prime-popup-inner"><div class="prime-popup-head"><div class="prime-popup-icon" aria-hidden="true"></div><button type="button" class="prime-popup-close" aria-label="Fermer">×</button></div><div class="prime-popup-kicker">HORIZON SPORTIF DE BIR EL HAFEY · NOTIFICATION</div><h2 id="prime-popup-title"></h2><p id="prime-popup-message"></p><div class="prime-popup-member" hidden></div><div class="prime-popup-actions"><button type="button" class="prime-popup-cancel">Annuler</button><button type="button" class="primary prime-popup-accept">Compris</button></div></div>';
   document.body.appendChild(dialog);
   const title=dialog.querySelector('#prime-popup-title'), message=dialog.querySelector('#prime-popup-message');
   const icon=dialog.querySelector('.prime-popup-icon'), accept=dialog.querySelector('.prime-popup-accept');
@@ -18,7 +18,7 @@
     current=queue.shift(); const type=Object.prototype.hasOwnProperty.call(labels,current.type) ? current.type : 'info';
     dialog.dataset.type=type; dialog.dataset.kind=current.kind || 'default';
     title.textContent=current.title || labels[type][0]; message.textContent=current.message;
-    kicker.textContent=current.kind==='access' ? 'PRIME FIT · CONTRÔLE D’ACCÈS' : 'PRIME FIT · NOTIFICATION';
+    kicker.textContent=current.kind==='access' ? 'HORIZON SPORTIF DE BIR EL HAFEY · CONTRÔLE D’ACCÈS' : 'HORIZON SPORTIF DE BIR EL HAFEY · NOTIFICATION';
     icon.textContent=labels[type][1]; cancel.hidden=type!=='confirm'; accept.textContent=type==='confirm' ? 'Confirmer' : (current.kind==='access' ? 'Fermer' : 'Compris');
     member.replaceChildren(); member.hidden=!current.member;
     if (current.member) {

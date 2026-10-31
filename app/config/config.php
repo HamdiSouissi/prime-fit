@@ -1,6 +1,6 @@
 <?php
 return [
-    'app_name' => 'PRIME FIT',
+    'app_name' => 'Horizon Sportif de Bir El Hafey',
     'timezone' => 'Africa/Tunis',
     // Activer uniquement après configuration d’un service d’envoi sur le serveur.
     'mail' => ['enabled' => false, 'from' => ''],
