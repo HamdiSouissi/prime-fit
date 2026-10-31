@@ -47,7 +47,7 @@ Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage e
 
 ## Étapes suivantes
 
-Fiches membres enrichies (photo, historique et certificat), renouvellement guidé et gel avec prolongation, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports, paramètres et portail membre. Les exports PDF, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
+Fiches membres enrichies (photo, historique et certificat), renouvellement guidé et gel avec prolongation, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports avancés, paramètres et portail membre. Les exports PDF, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
 
 ## Membres et abonnements
 
@@ -130,3 +130,9 @@ Une adresse e-mail valide est obligatoire pour chaque **nouveau** membre. Après
 Conservez également la configuration `db` du fichier. L'application utilise la fonction PHP native `mail()` : votre hébergement doit disposer d'un transport sortant correctement configuré (sendmail ou relais SMTP géré par le serveur). Sur XAMPP/WAMP, ce transport n'est généralement pas configuré par défaut ; renseignez-vous auprès de votre hébergeur ou configurez-le sur le serveur. L'extension PHP **zlib** est nécessaire pour créer l'image PNG. Configurez aussi les enregistrements SPF/DKIM/DMARC de votre domaine selon votre fournisseur et effectuez un envoi de test réel.
 
 Un message « accepté par le serveur de messagerie » ne garantit pas la livraison dans la boîte du client. Si l'envoi est désactivé, mal configuré ou échoue, le membre reste enregistré et l'interface l'indique : corrigez la configuration puis renvoyez la carte. Aucun service d'envoi externe n'est appelé pour générer le QR. L'e-mail n'est pas chiffré de bout en bout ; le QR est copiable et ne doit être envoyé qu'à l'adresse confirmée du membre. Bibliothèque QR PHP : PHP QR Code, licence LGPL-3.0, incluse dans `app/vendor/phpqrcode` (cache désactivé et adaptations de compatibilité PHP 8).
+
+## Rapports et statistiques
+
+Admin, Gérant et Comptable peuvent consulter un rapport mensuel : encaissements d’abonnements et ventes boutique, dépenses, solde, passages acceptés et membres distincts. Le tableau quotidien s’exporte en CSV (toutes les dates du mois) et peut être imprimé ou enregistré en PDF via le navigateur. Les montants proviennent des enregistrements existants ; aucune nouvelle migration n’est nécessaire.
+
+La rétention est une **estimation** : parmi les membres dont le statut est actuellement actif et dont un abonnement actuellement marqué actif couvre au moins un jour du mois précédent, proportion ayant également un abonnement actif couvrant au moins un jour du mois sélectionné. La fréquentation estimée est la proportion des membres actuellement actifs avec un abonnement actif couvrant au moins un jour du mois ayant enregistré au moins un passage accepté durant ce mois. Les statuts historiques et gels ne sont pas reconstitués ; les résultats des mois passés peuvent donc évoluer quand les statuts changent. L'indicateur de fréquentation ne mesure pas la capacité ni le taux d'occupation. Les séances privées sans paiement enregistré sont exclues, et le solde ne constitue pas une comptabilité fiscale. Le graphique requiert Chart.js ; les données restent disponibles dans le tableau sans celui-ci.
