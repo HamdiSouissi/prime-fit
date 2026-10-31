@@ -47,7 +47,7 @@ Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage e
 
 ## Étapes suivantes
 
-Fiches membres enrichies (photo, historique, certificat et QR), renouvellement guidé et gel avec prolongation, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports, paramètres et portail membre. Les exports PDF, QR codes, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
+Fiches membres enrichies (photo, historique et certificat), renouvellement guidé et gel avec prolongation, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports, paramètres et portail membre. Les exports PDF, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
 
 ## Membres et abonnements
 
@@ -59,7 +59,7 @@ Admin, Gérant, Réceptionniste et Comptable peuvent accéder à la caisse et en
 
 ## Accès et présences
 
-Admin, Gérant et Réceptionniste peuvent enregistrer un passage à partir du numéro de carte ; Coach consulte le journal en lecture seule. L’accès est refusé si le membre est inactif ou sur liste noire, ou s’il ne possède pas d’abonnement actif couvrant la date du jour (les abonnements gelés, annulés, futurs et expirés ne sont pas valides). Les passages de membres connus, acceptés comme refusés, sont historisés ; une carte inconnue ne peut pas être associée à un membre et n'est donc pas enregistrée. Le tableau de bord compte les passages acceptés, et non les membres uniques. Un lecteur QR qui saisit le numéro de carte comme un clavier peut être utilisé, mais la génération de QR et la lecture par caméra ne sont pas encore disponibles. Le système ne pilote pas de contrôle d’accès physique et n’applique pas de limite de passages ou de décompte de séances.
+Admin, Gérant et Réceptionniste peuvent enregistrer un passage à partir du numéro de carte ; Coach consulte le journal en lecture seule. L’accès est refusé si le membre est inactif ou sur liste noire, ou s’il ne possède pas d’abonnement actif couvrant la date du jour (les abonnements gelés, annulés, futurs et expirés ne sont pas valides). Les passages de membres connus, acceptés comme refusés, sont historisés ; une carte inconnue ne peut pas être associée à un membre et n'est donc pas enregistrée. Le tableau de bord compte les passages acceptés, et non les membres uniques. Une carte QR personnelle peut être imprimée ou téléchargée et scannée par la caméra ou un lecteur USB. Le système ne pilote pas de contrôle d’accès physique et n’applique pas de limite de passages ou de décompte de séances.
 
 ## Cours collectifs
 
@@ -102,3 +102,11 @@ Cette synthèse est un suivi de trésorerie simplifié, **pas un bilan comptable
 Admin et Gérant peuvent créer, activer ou désactiver des codes promotionnels en pourcentage. La Réception peut consulter le catalogue et préparer les relances. Les codes sont **informatifs uniquement** : ils ne sont ni appliqués ni vérifiés lors de la création d'un abonnement ou d'un paiement. Aucun suivi d'utilisation, plafond ou parrainage n'est encore disponible.
 
 Les anniversaires du mois et abonnements expirant sous sept jours sont affichés pour les membres actifs, jusqu'à 100 lignes par liste. Un numéro tunisien de 8 chiffres, avec ou sans indicatif +216, permet d'ouvrir WhatsApp avec un message prérempli ; le membre du personnel vérifie et envoie lui-même le message. Il n'y a aucun envoi automatique, SMS, historique de contact ni contrôle de consentement dans l'application. Vérifiez les autorisations et préférences de communication avant toute relance ; les membres inactifs ou blacklistés ne figurent pas dans ces listes.
+
+## Cartes QR et pointage par caméra
+
+**Migration obligatoire pour une base existante** : sauvegarder la base puis importer `database/member_qr.sql` une seule fois. Ne pas importer cette migration sur une nouvelle installation créée avec le `schema.sql` actuel, qui comprend déjà la colonne. Les membres déjà présents (y compris ceux de démonstration) reçoivent un QR depuis « Membres → Carte QR → Générer ».
+
+Pour chaque nouveau membre, un jeton aléatoire unique est créé automatiquement et sa carte s'ouvre après l'enregistrement. L'équipe Admin, Gérant ou Réceptionniste peut l'imprimer, l'enregistrer en PDF depuis le navigateur ou télécharger le QR en PNG. Depuis « Accès & présences », cliquer sur « Scanner avec la caméra », autoriser l'accès à la caméra et présenter le QR ; la validation d'abonnement, le refus éventuel et le journal de présence restent identiques au pointage manuel. Le numéro de carte et les lecteurs USB qui saisissent le contenu du QR restent utilisables. Les bibliothèques QR sont servies localement et ne transmettent pas les codes à un service externe.
+
+La caméra exige un navigateur compatible et un contexte sécurisé **HTTPS** (ou localhost), ainsi que les autorisations du navigateur ; sur une prévisualisation intégrée, l'autorisation de caméra doit aussi être accordée à l'iframe. Les codes sont des identifiants réutilisables, pas une preuve d'identité : leur copie permet de pointer à la place du membre. Ne pas partager les QR publiquement ; en cas de perte, utiliser « Renouveler le QR » pour invalider l'ancien et remettre le nouveau. Le pointage ne pilote pas de serrure physique et ne constitue pas un système antifraude.

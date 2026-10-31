@@ -1,5 +1,5 @@
 <?php
-/** Pointage manuel par numéro de carte (un lecteur QR USB peut saisir ce numéro). */
+/** Pointage par numéro de carte ou jeton QR personnel. */
 class AttendanceController {
     private function canWrite(): bool {
         return in_array($_SESSION['user']['role'], ['Admin', 'Gérant', 'Réceptionniste'], true);
@@ -13,15 +13,20 @@ class AttendanceController {
             verify_csrf();
             if (!$canWrite) { http_response_code(403); exit('Accès interdit.'); }
             $card = trim($_POST['card_number'] ?? '');
-            if ($card === '' || mb_strlen($card) > 50) {
+            if ($card === '' || (mb_strlen($card) > 50 && !preg_match('/^PF1:[0-9a-f]{64}$/D', $card))) {
                 $error = 'Saisissez un numéro de carte valide.';
             } else {
                 $pdo = db(); $pdo->beginTransaction();
                 try {
-                    $stmt = $pdo->prepare('SELECT id, first_name, last_name, status FROM members WHERE card_number = ? FOR UPDATE');
-                    $stmt->execute([$card]); $member = $stmt->fetch();
+                    if (preg_match('/^PF1:([0-9a-f]{64})$/D', $card, $match)) {
+                        $stmt = $pdo->prepare('SELECT id, first_name, last_name, status FROM members WHERE qr_token = ? FOR UPDATE');
+                        $stmt->execute([$match[1]]);
+                    } else {
+                        $stmt = $pdo->prepare('SELECT id, first_name, last_name, status FROM members WHERE card_number = ? FOR UPDATE');
+                        $stmt->execute([$card]);
+                    } $member = $stmt->fetch();
                     if (!$member) {
-                        $pdo->rollBack(); $error = 'Carte inconnue. Aucun passage enregistré.';
+                        $pdo->rollBack(); $error = 'Carte inconnue ou QR invalide. Aucun passage enregistré.';
                     } else {
                         $stmt = $pdo->prepare("SELECT p.name, s.end_date FROM subscriptions s JOIN plans p ON p.id=s.plan_id WHERE s.member_id=? AND s.status='active' AND s.start_date<=CURDATE() AND s.end_date>=CURDATE() ORDER BY s.end_date DESC LIMIT 1");
                         $stmt->execute([$member['id']]); $subscription = $stmt->fetch();

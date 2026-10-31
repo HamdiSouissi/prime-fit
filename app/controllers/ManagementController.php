@@ -23,8 +23,14 @@ class ManagementController {
                         $stmt = db()->prepare('UPDATE members SET first_name=?, last_name=?, phone=?, email=?, card_number=?, governorate=?, birth_date=?, status=? WHERE id=?');
                         $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$card ?: null,$governorate ?: null,$birth ?: null,$status,$id]);
                     } else {
-                        db()->prepare('INSERT INTO members (first_name,last_name,phone,email,card_number,governorate,birth_date,status) VALUES (?,?,?,?,?,?,?,?)')->execute([$first,$last,$phone ?: null,$email ?: null,$card ?: null,$governorate ?: null,$birth ?: null,$status]);
-                        $id = (int)db()->lastInsertId();
+                        $pdo = db(); $pdo->beginTransaction();
+                        try {
+                            $pdo->prepare('INSERT INTO members (first_name,last_name,phone,email,card_number,governorate,birth_date,status,qr_token) VALUES (?,?,?,?,?,?,?,?,?)')->execute([$first,$last,$phone ?: null,$email ?: null,$card ?: null,$governorate ?: null,$birth ?: null,$status,bin2hex(random_bytes(32))]);
+                            $id = (int)$pdo->lastInsertId();
+                            $this->log('Fiche membre et carte QR créées #'.$id);
+                            $pdo->commit();
+                        } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
+                        $this->flash('Membre créé. Sa carte QR est prête à être imprimée.'); redirect('member_card&id='.$id);
                     }
                     $this->log('Fiche membre enregistrée #'.$id); $this->flash('Fiche membre enregistrée.'); redirect('members');
                 } catch (PDOException $ex) { if ($ex->getCode() !== '23000') throw $ex; $error = 'Ce numéro de carte est déjà utilisé.'; }
@@ -41,6 +47,26 @@ class ManagementController {
         $pageNumber=min($pageNumber,max(1,(int)ceil($total/$limit))); $offset=($pageNumber-1)*$limit;
         $stmt=db()->prepare('SELECT * FROM members'.$where.' ORDER BY created_at DESC, id DESC LIMIT '.$limit.' OFFSET '.$offset); $stmt->execute($params); $members=$stmt->fetchAll();
         $flash = $_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/members.php';
+    }
+    public function memberCard(): void {
+        $this->requireWrite();
+        $id = filter_var($_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['id'] ?? '') : ($_GET['id'] ?? ''), FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Membre introuvable.'); }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            verify_csrf();
+            $pdo = db(); $pdo->beginTransaction();
+            try {
+                $stmt=$pdo->prepare('SELECT id FROM members WHERE id=? FOR UPDATE'); $stmt->execute([$id]);
+                if (!$stmt->fetch()) { $pdo->rollBack(); http_response_code(404); exit('Membre introuvable.'); }
+                $pdo->prepare('UPDATE members SET qr_token=? WHERE id=?')->execute([bin2hex(random_bytes(32)),$id]);
+                $this->log('Carte QR émise ou renouvelée membre #'.$id); $pdo->commit();
+                $this->flash('Carte QR créée. Toute carte QR précédente est désormais invalide.'); redirect('member_card&id='.$id);
+            } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
+        }
+        $stmt=db()->prepare('SELECT id,first_name,last_name,card_number,qr_token FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
+        if (!$member) { http_response_code(404); exit('Membre introuvable.'); }
+        header('Cache-Control: no-store, private'); header('Referrer-Policy: no-referrer');
+        $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/member_card.php';
     }
     private static function validDate(string $date): bool { $d=DateTimeImmutable::createFromFormat('!Y-m-d',$date); return $d && $d->format('Y-m-d') === $date; }
     public function subscriptions(): void {
