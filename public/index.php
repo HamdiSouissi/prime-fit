@@ -7,6 +7,7 @@ require __DIR__ . '/../app/controllers/ManagementController.php';
 require __DIR__ . '/../app/controllers/PaymentController.php';
 require __DIR__ . '/../app/controllers/AttendanceController.php';
 require __DIR__ . '/../app/controllers/CourseController.php';
+require __DIR__ . '/../app/controllers/CoachController.php';
 $page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
 try {
     if ($page === 'logout') { (new AuthController())->logout(); }
@@ -16,6 +17,7 @@ try {
     elseif (in_array($page, ['payments', 'receipt'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); else $controller->index(); }
     elseif ($page === 'attendance') { if (!isset($_SESSION['user'])) redirect('login'); (new AttendanceController())->index(); }
     elseif ($page === 'courses') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseController())->index(); }
+    elseif ($page === 'coaches') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachController())->index(); }
     else { http_response_code(404); echo 'Page introuvable'; }
 } catch (PDOException $ex) {
     error_log($ex->getMessage()); http_response_code(503); echo 'Service indisponible. Vérifiez la configuration de la base de données.';
