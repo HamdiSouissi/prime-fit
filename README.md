@@ -89,7 +89,9 @@ Les ventes boutique sont séparées des paiements d'abonnement : elles ne figure
 
 Admin et Gérant peuvent créer des équipements et enregistrer une panne, un entretien ou une réparation, en choisissant explicitement le nouveau statut et la prochaine échéance. L'inventaire permet la recherche et signale les appareils hors service, en maintenance ou dont l'échéance est passée ou dans les sept jours. Tous les rôles peuvent le consulter ; les coûts sont visibles seulement par Admin, Gérant et Comptable. Les actions sont journalisées. Une intervention peut être datée au plus tard du jour courant ; l'échéance peut être passée pour signaler un retard.
 
-L'historique affiche les 100 dernières interventions par équipement. Le coût est informatif et ne crée pas de dépense comptable. L'édition et la suppression des fiches ou interventions, les pièces jointes et les notifications automatiques restent à développer. Les alertes ne sont affichées que dans ce module.
+Admin et Gérant peuvent modifier le nom, la référence, l'emplacement et la date d'achat d'une fiche ; le statut et l'échéance restent modifiés par une intervention. Pour éviter d'écraser un état récent, une nouvelle intervention ne peut pas être antérieure à la dernière et elle est refusée si une autre intervention a modifié la fiche entre-temps. L'historique affiche les 100 dernières interventions par équipement ; il ne conserve pas l'ancien statut ou l'ancienne échéance. L'inventaire est filtrable par statut ou échéance et exportable en CSV avec ces filtres, toutes pages comprises et sans les coûts.
+
+Le coût est informatif et ne crée pas de dépense comptable. La suppression ou l'archivage des fiches, l'édition des interventions, les pièces jointes et les notifications automatiques restent à développer. Les alertes ne sont affichées que dans ce module. Aucune nouvelle migration n'est nécessaire pour ces améliorations.
 
 ## Dépenses et trésorerie
 
