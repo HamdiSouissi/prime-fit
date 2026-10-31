@@ -11,6 +11,7 @@ require __DIR__ . '/../app/controllers/CoachController.php';
 require __DIR__ . '/../app/controllers/FitnessController.php';
 require __DIR__ . '/../app/controllers/ShopController.php';
 require __DIR__ . '/../app/controllers/EquipmentController.php';
+require __DIR__ . '/../app/controllers/FinanceController.php';
 $page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
 try {
     if ($page === 'logout') { (new AuthController())->logout(); }
@@ -24,6 +25,7 @@ try {
     elseif ($page === 'fitness') { if (!isset($_SESSION['user'])) redirect('login'); (new FitnessController())->index(); }
     elseif ($page === 'shop') { if (!isset($_SESSION['user'])) redirect('login'); (new ShopController())->index(); }
     elseif ($page === 'equipment') { if (!isset($_SESSION['user'])) redirect('login'); (new EquipmentController())->index(); }
+    elseif (in_array($page, ['finance', 'finance_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new FinanceController(); if ($page === 'finance_export') $controller->export(); else $controller->index(); }
     else { http_response_code(404); echo 'Page introuvable'; }
 } catch (PDOException $ex) {
     error_log($ex->getMessage()); http_response_code(503); echo 'Service indisponible. Vérifiez la configuration de la base de données.';
