@@ -31,5 +31,10 @@ try {
     elseif ($page === 'marketing') { if (!isset($_SESSION['user'])) redirect('login'); (new MarketingController())->index(); }
     else { http_response_code(404); echo 'Page introuvable'; }
 } catch (PDOException $ex) {
-    error_log($ex->getMessage()); http_response_code(503); echo 'Service indisponible. Vérifiez la configuration de la base de données.';
+    error_log($ex->getMessage()); http_response_code(503);
+    if (in_array($page, ['member_card', 'attendance'], true) && ManagementController::missingQrColumn($ex)) {
+        echo 'La base de données doit être mise à jour pour utiliser les cartes QR. Après sauvegarde, importez database/member_qr.sql dans la base utilisée par l’application, puis réessayez.';
+    } else {
+        echo 'Service indisponible. Vérifiez la configuration de la base de données et consultez les journaux du serveur.';
+    }
 }

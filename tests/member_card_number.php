@@ -26,3 +26,10 @@ try { $controller->members(); throw new RuntimeException('Redirection attendue')
 $updated=$pdo->query('SELECT * FROM members WHERE id=1')->fetch();
 if ($updated['card_number']!==$members[0]['card_number'] || $updated['qr_token']!==$members[0]['qr_token'] || $updated['first_name']!=='Modifié') throw new RuntimeException('Modification non autorisée du numéro ou du QR');
 echo "Création et modification des numéros de carte : OK\n";
+// Vérification du diagnostic sans divulguer le message SQL à l'utilisateur.
+$missing = new PDOException('Unknown column');
+$missing->errorInfo = ['42S22', 1054, "Unknown column 'qr_token' in 'field list'"];
+$other = new PDOException('Unknown column');
+$other->errorInfo = ['42S22', 1054, "Unknown column 'other' in 'field list'"];
+if (!ManagementController::missingQrColumn($missing) || ManagementController::missingQrColumn($other)) throw new RuntimeException('Diagnostic de migration incorrect');
+echo "Diagnostic de migration QR : OK\n";

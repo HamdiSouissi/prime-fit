@@ -1,5 +1,10 @@
 <?php
 class ManagementController {
+    public static function missingQrColumn(PDOException $ex): bool {
+        $info = $ex->errorInfo ?? [];
+        return ($info[0] ?? '') === '42S22' && (int)($info[1] ?? 0) === 1054
+            && stripos((string)($info[2] ?? ''), 'qr_token') !== false;
+    }
     private function canWrite(): bool { return in_array($_SESSION['user']['role'], ['Admin', 'Gérant', 'Réceptionniste'], true); }
     private function requireWrite(): void { if (!$this->canWrite()) { http_response_code(403); exit('Accès interdit.'); } }
     private function log(string $action): void {
@@ -44,7 +49,14 @@ class ManagementController {
                         $this->flash('Membre créé. Sa carte QR est prête à être imprimée.'); redirect('member_card&id='.$id);
                     }
                     $this->log('Fiche membre enregistrée #'.$id); $this->flash('Fiche membre enregistrée.'); redirect('members');
-                } catch (PDOException $ex) { if ($ex->getCode() !== '23000') throw $ex; $error = 'Impossible de créer le membre. Veuillez réessayer.'; }
+                } catch (PDOException $ex) {
+                    if (self::missingQrColumn($ex)) {
+                        error_log('Migration QR manquante : ' . $ex->getMessage());
+                        $error = 'La base de données doit être mise à jour avant de créer un membre. Après sauvegarde, importez database/member_qr.sql dans la base utilisée par l’application, puis réessayez.';
+                    } elseif ($ex->getCode() === '23000') {
+                        $error = 'Impossible de créer le membre. Veuillez réessayer.';
+                    } else { throw $ex; }
+                }
             }
         } elseif (isset($_GET['edit']) && $canWrite) {
             $stmt = db()->prepare('SELECT * FROM members WHERE id=?'); $stmt->execute([(int)$_GET['edit']]); $member = $stmt->fetch();
