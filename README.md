@@ -1,6 +1,6 @@
 # Prime Fit
 
-Socle MVC PHP natif pour la gestion d'une salle de sport en Tunisie. **Première étape livrée : connexion, déconnexion, journal de connexion, tableau de bord MySQL, gestion de base des membres et abonnements, encaissements partiels, caisse journalière pointage par carte gestion des cours collectifs et séances privées des coachs.** Les autres rubriques du menu sont indicatives et ne sont pas encore implémentées. Ce projet ne constitue pas encore une application complète de gestion de salle.
+Socle MVC PHP natif pour la gestion d'une salle de sport en Tunisie. **Première étape livrée : connexion, déconnexion, journal de connexion, tableau de bord MySQL, gestion de base des membres et abonnements, encaissements partiels, caisse journalière, pointage par carte, gestion des cours collectifs et séances privées des coachs.** Les autres rubriques du menu sont indicatives et ne sont pas encore implémentées. Ce projet ne constitue pas encore une application complète de gestion de salle.
 
 ## Prérequis
 
@@ -42,7 +42,7 @@ Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage e
 
 ## Étapes suivantes
 
-Fiches membres enrichies (photo, historique, certificat et QR), renouvellement guidé et gel avec prolongation, encaissement/facturation, contrôle d'accès, cours, coachs, suivi sportif, boutique, équipements, comptabilité, marketing, rapports, paramètres et portail membre. Les exports PDF, QR codes, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
+Fiches membres enrichies (photo, historique, certificat et QR), renouvellement guidé et gel avec prolongation, facturation fiscale, contrôle d'accès physique, enrichissement des cours et des coachs, suivi sportif, boutique, équipements, comptabilité, marketing, rapports, paramètres et portail membre. Les exports PDF, QR codes, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
 
 ## Membres et abonnements
 
@@ -60,7 +60,7 @@ Admin, Gérant et Réceptionniste peuvent enregistrer un passage à partir du nu
 
 Le planning permet de créer des salles et des cours, d'attribuer un utilisateur ayant le rôle Coach, d'inscrire un membre et d'annuler un cours ou une inscription avant son début. Un abonnement actif couvrant la date du cours est nécessaire pour réserver. La capacité est contrôlée sous verrou ; au-delà, les inscriptions rejoignent une liste d'attente. À l'annulation d'une place confirmée, le premier membre toujours éligible est promu automatiquement. Les salles ne peuvent pas accueillir deux cours simultanés. Les rôles Admin, Gérant et Réceptionniste gèrent le planning ; le Coach le consulte.
 
-Limites : les fiches coach et la détection des conflits de planning coach ne sont pas encore disponibles ; les comptes coach peuvent être créés dans le module Coachs. Les notifications de promotion, l'espace membre, l'historique des réservations annulées dans l'interface et la modification des cours restent à développer. Les membres en attente devenus inéligibles restent en attente et sont ignorés lors de la promotion.
+Limites : la détection des conflits de planning coach entre cours collectifs et séances privées n’est pas encore disponible ; les comptes coach peuvent être créés dans le module Coachs. Les notifications de promotion, l'espace membre, l'historique des réservations annulées dans l'interface et la modification des cours restent à développer. Les membres en attente devenus inéligibles restent en attente et sont ignorés lors de la promotion.
 
 ## Coachs et séances privées
 
