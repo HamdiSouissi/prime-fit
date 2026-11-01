@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/../services/MemberPortalAuth.php';
 require_once __DIR__.'/../services/MemberPortalInvitations.php';
 require_once __DIR__.'/../services/MemberPortalData.php';
+require_once __DIR__.'/../services/MemberPortalPayments.php';
 require_once __DIR__.'/../services/MemberPortalBooking.php';
 require_once __DIR__.'/../services/MemberPortalProfile.php';
 require_once __DIR__.'/../services/MemberPortalCard.php';
@@ -181,10 +182,25 @@ final class MemberPortalController {
         $measurePage=filter_var($_GET['measurement_page'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]) ?: 1;
         $data=(new MemberPortalData(db()))->get($_SESSION['member_portal']['member_id'],null,(int)$measurePage);
         $section=is_string($_GET['section'] ?? null) ? $_GET['section'] : 'accueil';
-        if (!in_array($section,['accueil','cours','activite','mesures','programmes','profil'],true)) $section='accueil';
+        if (!in_array($section,['accueil','cours','activite','paiements','mesures','programmes','profil'],true)) $section='accueil';
+        if ($section==='paiements') {
+            $paymentPage=filter_var($_GET['payment_page'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]) ?: 1;
+            $paymentHistory=(new MemberPortalPayments(db()))->listing($_SESSION['member_portal']['member_id'],(int)$paymentPage);
+        }
         try { $card=(new MemberPortalCard(db()))->get($_SESSION['member_portal']); $profile=(new MemberPortalProfile(db()))->get($_SESSION['member_portal']); }
         catch (DomainException $e) { unset($_SESSION['member_portal']); redirect('member_login'); }
         require __DIR__.'/../views/member_portal.php';
+    }
+    public function receiptPdf(): void {
+        $this->secureHeaders();
+        if (!(new MemberPortalAuth(db()))->validSession($_SESSION['member_portal'] ?? null)) { unset($_SESSION['member_portal']); redirect('member_login'); }
+        $id=filter_var($_GET['id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Reçu introuvable.'); }
+        $pdf=(new MemberPortalPayments(db()))->pdf($_SESSION['member_portal']['member_id'],(int)$id,gym_name());
+        if ($pdf===null) { http_response_code(404); exit('Reçu introuvable.'); }
+        header('Content-Type: application/pdf'); header('X-Content-Type-Options: nosniff');
+        $disposition=($_GET['download'] ?? '')==='1' ? 'attachment' : 'inline';
+        header('Content-Disposition: '.$disposition.'; filename="recu-paiement-'.(int)$id.'.pdf"'); header('Content-Length: '.strlen($pdf)); echo $pdf;
     }
     public function card(): void {
         $this->secureHeaders();

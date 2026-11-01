@@ -26,6 +26,10 @@ ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clea
 if (!str_contains($html,'S’inscrire') || !str_contains($html,'name="csrf"') || !str_contains($html,'name="course_id"')) throw new RuntimeException('Formulaire d’inscription absent');
 $section='mesures'; ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean(); if (!str_contains($html,'name="action" value="measurement_update"') || !str_contains($html,'name="current_password"')) throw new RuntimeException('Mesures non modifiables');
 require_once __DIR__.'/../app/services/MemberPortalProfile.php'; $profile=['first_name'=>'A <B>','last_name'=>'Test','email'=>'a@example.tn','phone'=>'','governorate'=>'','birth_date'=>'','version'=>'test'];
+function dt($amount): string { return number_format((float)$amount,3,',',' ').' DT'; }
+$section='paiements'; $paymentHistory=['total'=>21,'page'=>2,'pages'=>3,'rows'=>[['id'=>7,'amount'=>'21.500','method'=>'<espèces>','paid_at'=>'2026-01-01 12:00:00','plan'=>'<Mensuel>']]];
+ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean();
+if (!str_contains($html,'21,500 DT') || !str_contains($html,'&lt;Mensuel&gt;') || !str_contains($html,'&lt;espèces&gt;') || !str_contains($html,'member_receipt_pdf?id=7&amp;download=1') || !str_contains($html,'payment_page=3')) throw new RuntimeException('Liste des paiements ou échappement incorrect');
 $section='profil'; ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean(); if (!str_contains($html,'A &lt;B&gt;') || !str_contains($html,'name="action" value="profile_update"') || !str_contains($html,'readonly')) throw new RuntimeException('Profil ou échappement incorrect');
 for ($i=10;$i<35;$i++) $db->prepare('INSERT INTO fitness_measurements VALUES(?,1,?,?,?,?,?)')->execute([$i,'2025-01-01',80,180,null,'interne']);
 $second=$service->get(1,new DateTimeImmutable('2026-02-01 10:00:00'),2);
