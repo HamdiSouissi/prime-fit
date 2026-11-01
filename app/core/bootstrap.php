@@ -23,5 +23,19 @@ function db(): PDO {
     }
     return $pdo;
 }
+function gym_name(): string {
+    global $config;
+    static $name=null;
+    if ($name===null) {
+        require_once __DIR__.'/../services/GymBrand.php';
+        try { $name=GymBrand::resolve(db(),$config['app_name'] ?? null); }
+        catch (PDOException $ex) { $name=GymBrand::clean($config['app_name'] ?? null) ?? 'Horizon Sportif de Bir El Hafey'; }
+    }
+    return $name;
+}
+function gym_brand_markup(): string {
+    $parts=preg_split('/\s+/u',gym_name(),2); $first=e($parts[0]); $rest=isset($parts[1]) ? ' <span class="brand-gold">'.e($parts[1]).'</span>' : '';
+    return $first.$rest.'<small>CLUB DE SPORT</small>';
+}
 function redirect(string $route): void { header('Location: index.php?page=' . $route); exit; }
 function dt($amount): string { return number_format((float)$amount, 3, ',', ' ') . ' DT'; }

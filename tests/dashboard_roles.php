@@ -18,6 +18,8 @@ foreach ($db->queries as $sql) if (stripos($sql,'FROM attendance')!==false) thro
 $admin=$model->data('Admin',$date); if ($admin['visits']!==1 || $admin['today']!==12.345 || $admin['values'][5]!==15.345 || $admin['values'][4]!==99.0) throw new RuntimeException('Agrégats ou périodes incorrects');
 try { $model->data('Inconnu',$date); throw new RuntimeException('Rôle inconnu accepté'); } catch (DomainException $ex) {}
 function e($v): string { return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); }
+function gym_name(): string { return 'Salle de test'; }
+function gym_brand_markup(): string { return e(gym_name()); }
 function csrf(): string { return 'test'; }
 function dt($v): string { return number_format((float)$v,3,',',' ').' DT'; }
 $_SESSION=['user'=>['name'=>'Coach Test','role'=>'Coach']]; $data=$coach; ob_start(); require __DIR__.'/../app/views/dashboard.php'; $html=ob_get_clean();

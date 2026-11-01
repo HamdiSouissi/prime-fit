@@ -65,6 +65,8 @@ try {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_settings.sql dans la base utilisée, puis réessayez.';
     } elseif ($page === 'subscription_detail' && ($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'subscription_freezes') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_freezes.sql dans la base utilisée.';
+    } elseif ($page === 'settings' && ($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'gym_name') !== false) {
+        echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_name.sql dans la base utilisée, puis réessayez.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'agreed_price') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_prices.sql dans la base utilisée. Les prix des anciens abonnements devront être vérifiés.';
     } else {

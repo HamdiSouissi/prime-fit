@@ -13,6 +13,12 @@ if (!$html || !str_contains($html,'Horizon Sportif de Bir El Hafey') || !str_con
 if (!preg_match('/Content-Type: image\/png;[^\r]+\r\nContent-Disposition:[^\r]+\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+)/',$sent['body'],$matches)) throw new RuntimeException('Pièce jointe absente');
 $png=base64_decode($matches[1],true);
 if ($png===false || substr($png,0,8)!=="\x89PNG\r\n\x1a\n") throw new RuntimeException('PNG invalide');
+$custom=['enabled'=>true,'from'=>'contact@example.tn','gym_name'=>'Énergie <Sport> & Co'];
+if ((new MemberCardMailer($custom,$transport))->send($member)!=='accepted') throw new RuntimeException('Nom personnalisé non envoyé');
+if (!str_contains(mb_decode_mimeheader($sent['subject']),'Énergie <Sport> & Co')) throw new RuntimeException('Objet personnalisé incorrect');
+if (!preg_match('/Content-Type: text\/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+\/=\r\n]+)/',$sent['body'],$customHtml)) throw new RuntimeException('HTML personnalisé absent');
+$customHtml=base64_decode($customHtml[1],true);
+if (!str_contains($customHtml,'Énergie &lt;Sport&gt; &amp; Co') || str_contains($customHtml,'<Sport>')) throw new RuntimeException('Nom personnalisé non échappé');
 if (isset($argv[1])) file_put_contents($argv[1],$png);
 if ((new MemberCardMailer(['enabled'=>false,'from'=>'contact@example.tn'],$transport))->send($member)!=='not_configured') throw new RuntimeException('Configuration manquante');
 if ((new MemberCardMailer(['enabled'=>true,'from'=>'contact@example.tn'],static fn()=>false))->send($member)!=='failed') throw new RuntimeException('Échec non traité');

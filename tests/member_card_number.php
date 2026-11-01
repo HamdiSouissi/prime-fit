@@ -2,6 +2,7 @@
 declare(strict_types=1);
 // Test autonome : php tests/member_card_number.php (extensions PDO SQLite et mbstring).
 class TestRedirect extends Exception {}
+function gym_name(): string { return 'Horizon Sportif de Bir El Hafey'; }
 function verify_csrf(): void {}
 function redirect(string $route): void { throw new TestRedirect($route); }
 function db(): PDO { global $pdo; return $pdo; }

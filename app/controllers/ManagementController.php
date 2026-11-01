@@ -11,7 +11,7 @@ class ManagementController {
     }
     private function sendCardEmail(array $member): string {
         global $config;
-        $status = (new MemberCardMailer($config['mail'] ?? []))->send($member);
+        $status = (new MemberCardMailer(array_merge($config['mail'] ?? [], ['gym_name'=>gym_name()])))->send($member);
         $messages = [
             'accepted' => 'Carte QR acceptée par le serveur de messagerie pour envoi (livraison non garantie).',
             'not_configured' => 'E-mail non envoyé : configurez la messagerie dans app/config/local.php.',

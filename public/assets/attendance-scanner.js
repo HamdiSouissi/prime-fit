@@ -21,7 +21,7 @@
       scanner = new Html5Qrcode('qr-reader', {formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE], verbose: false});
       await scanner.start({facingMode: 'environment'}, {fps: 10, qrbox: {width: 240, height: 240}}, async text => {
         if (submitted) return;
-        if (!/^PF1:[0-9a-f]{64}$/.test(text)) { message.textContent = 'Ce code n’est pas une carte Horizon Sportif de Bir El Hafey valide.'; return; }
+        if (!/^PF1:[0-9a-f]{64}$/.test(text)) { message.textContent = 'Ce code n’est pas une carte membre valide.'; return; }
         submitted = true; message.textContent = 'QR reconnu, vérification en cours…';
         document.getElementById('scan-value').value = text;
         await stopCamera(); form.submit();

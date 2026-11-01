@@ -159,7 +159,7 @@ mysql -u root -p prime_fit < database/gym_settings.sql
 
 Les nouvelles installations utilisant `schema.sql` possèdent déjà cette table. Admin et Gérant peuvent enregistrer le téléphone, l'adresse, l'e-mail, le matricule fiscal, les horaires et les paramètres indicatifs de TVA et de timbre ; Comptable dispose d'un accès en lecture seule. Les coordonnées et le matricule actuellement configurés apparaissent sur les reçus, y compris les reçus anciens : ils ne sont pas figés par transaction.
 
-Le nom affiché en lecture seule est défini dans la configuration ; le changement dynamique de la marque, le logo, les sauvegardes et la gestion multi-salles restent à développer. Les champs TVA et timbre sont **informatifs uniquement** : ils n'entraînent aucun calcul ni ajout aux paiements, et les reçus ne sont pas des factures fiscales.
+Le nom est modifiable par Admin et Gérant ; Comptable le consulte en lecture seule. Il est repris dans le logo textuel, la connexion, les titres, les notifications, les reçus, les cartes QR et les nouveaux e-mails et messages WhatsApp. Les sauvegardes et la gestion multi-salles restent à développer. Les champs TVA et timbre sont **informatifs uniquement** : ils n'entraînent aucun calcul ni ajout aux paiements, et les reçus ne sont pas des factures fiscales.
 
 ### Produits et corrections de stock
 
@@ -232,3 +232,17 @@ Le menu **Comptes du personnel** est réservé au rôle Admin. Il permet de cré
 Chaque modification exige le mot de passe actuel de l'administrateur et est journalisée sans mot de passe. Un administrateur ne peut pas modifier son propre rôle ou statut ni réinitialiser son propre mot de passe depuis ce module ; il utilise **Mon compte** pour ce dernier. Les actions administratives vérifient que l'auteur est toujours un Admin actif et conservent au moins un Admin actif. Les modifications et le journal sont transactionnels.
 
 **Tout changement actif/inactif invalide définitivement l'ancien mot de passe et les anciennes sessions**, y compris si le compte est réactivé avant leur prochaine requête. Après réactivation, l'Admin doit définir un nouveau mot de passe dans la fiche du compte ; aucun mot de passe n'est envoyé automatiquement. Transmettez-le par un canal sécurisé. Les autres modifications de droits prennent effet à la prochaine requête ; les requêtes déjà en cours ne sont pas interrompues. Les mots de passe doivent comporter de 12 à 72 octets. La limitation des tentatives est uniquement par session et doit être renforcée côté serveur avant production. Aucune migration SQL n'est nécessaire.
+
+### Nom de la salle et messages
+
+Pour une base existante possédant déjà `gym_settings`, sauvegardez puis importez **une seule fois** :
+
+```bash
+mysql -u root -p prime_fit < database/gym_name.sql
+```
+
+Remplacez `prime_fit` par le nom configuré dans `app/config/local.php` si nécessaire. Si la table `gym_settings` n'existe pas encore, importez à la place le fichier `database/gym_settings.sql` actuel ; n'appliquez pas ensuite `gym_name.sql`, car il contient déjà la colonne. Les nouvelles installations créées avec `schema.sql` n'ont pas besoin de migration.
+
+Dans **Paramètres → Informations générales**, Admin ou Gérant peut modifier le nom. Il est appliqué à la prochaine page affichée, notamment au logo textuel dans le menu, à la connexion, aux notifications, aux cartes, aux reçus et aux nouveaux e-mails et messages WhatsApp. Il n'est pas figé dans les reçus historiques ; les messages et documents déjà envoyés ou téléchargés ne sont pas modifiés. Si aucun nom n'a encore été enregistré ou si la migration est absente, le nom défini dans `app/config/config.php` (ou sa surcharge locale) reste utilisé. L'icône du logo reste celle du site : le téléversement d'une image de logo n'est pas implémenté.
+
+Les messages intégrés et les dialogues de succès, erreur, avertissement ou confirmation utilisent le thème de l'application ; les couleurs restent accompagnées de texte et d'icônes. Les messages serveur restent visibles sans JavaScript.

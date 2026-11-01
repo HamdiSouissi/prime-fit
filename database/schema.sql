@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS subscription_freezes (
 -- Sauvegarder avant toute migration. Cet import ne remplace pas les paramètres existants.
 CREATE TABLE IF NOT EXISTS gym_settings (
   id TINYINT UNSIGNED PRIMARY KEY,
+  gym_name VARCHAR(120) NULL,
   phone VARCHAR(30) NOT NULL DEFAULT '',
   email VARCHAR(190) NOT NULL DEFAULT '',
   address VARCHAR(255) NOT NULL DEFAULT '',

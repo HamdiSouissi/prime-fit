@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__.'/../services/GymBrand.php';
 /** Informations d'une seule salle. TVA et timbre ne sont pas appliqués aux paiements. */
 class GymSettings {
     private PDO $db;
@@ -10,9 +11,11 @@ class GymSettings {
         return $row;
     }
     public function save(array $input,int $userId,string $ip): void {
-        foreach (['phone','email','address','tax_id','opening_hours','vat_enabled','vat_rate','fiscal_stamp'] as $key) {
+        foreach (['gym_name','phone','email','address','tax_id','opening_hours','vat_enabled','vat_rate','fiscal_stamp'] as $key) {
             if (isset($input[$key]) && !is_string($input[$key])) throw new DomainException('Format de champ invalide.');
         }
+        $name=GymBrand::clean($input['gym_name'] ?? null);
+        if ($name===null) throw new DomainException('Indiquez un nom de salle valide, de 1 à 120 caractères, sans saut de ligne.');
         $phone=trim((string)($input['phone'] ?? '')); $email=trim((string)($input['email'] ?? ''));
         $address=trim((string)($input['address'] ?? '')); $taxId=trim((string)($input['tax_id'] ?? '')); $hours=trim((string)($input['opening_hours'] ?? ''));
         $vat=str_replace(',','.',trim((string)($input['vat_rate'] ?? ''))); $stamp=str_replace(',','.',trim((string)($input['fiscal_stamp'] ?? '')));
@@ -24,8 +27,8 @@ class GymSettings {
         try {
             $stmt=$this->db->prepare('SELECT id FROM gym_settings WHERE id=1 FOR UPDATE'); $stmt->execute();
             if (!$stmt->fetch()) throw new DomainException('Paramètres absents : importez la migration de la salle.');
-            $stmt=$this->db->prepare('UPDATE gym_settings SET phone=?,email=?,address=?,tax_id=?,opening_hours=?,vat_enabled=?,vat_rate=?,fiscal_stamp=?,updated_by=? WHERE id=1');
-            $stmt->execute([$phone,$email,$address,$taxId,$hours,(int)$enabled,$vat,$stamp,$userId]);
+            $stmt=$this->db->prepare('UPDATE gym_settings SET gym_name=?,phone=?,email=?,address=?,tax_id=?,opening_hours=?,vat_enabled=?,vat_rate=?,fiscal_stamp=?,updated_by=? WHERE id=1');
+            $stmt->execute([$name,$phone,$email,$address,$taxId,$hours,(int)$enabled,$vat,$stamp,$userId]);
             $this->db->prepare('INSERT INTO activity_logs (user_id,action,ip_address) VALUES (?,?,?)')->execute([$userId,'Paramètres de la salle mis à jour',substr($ip,0,45)]);
             $this->db->commit();
         } catch (Throwable $ex) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $ex; }
