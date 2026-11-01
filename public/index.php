@@ -39,11 +39,12 @@ if ($resolved['legacy'] && ($_SERVER['REQUEST_METHOD'] ?? 'GET')==='GET') {
 }
 try {
     // L'espace membre dispose d'une identité et de routes distinctes de celles du personnel.
-    if (in_array($page,['member_login','member_activate','member_space','member_logout'],true)) {
+    if (in_array($page,['member_login','member_activate','member_space','member_details','member_logout'],true)) {
         $portal=new MemberPortalController();
         if ($page==='member_login') $portal->login();
         elseif ($page==='member_activate') $portal->activate();
         elseif ($page==='member_logout') $portal->logout();
+        elseif ($page==='member_details') $portal->profile();
         else $portal->space();
         exit;
     }

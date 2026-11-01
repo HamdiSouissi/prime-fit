@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /** Autorisation explicite pour les messages marketing WhatsApp uniquement. */
 class MarketingConsent {
-    public function __construct(private PDO $db,private int $actor,private string $ip) {}
+    public function __construct(private PDO $db,private ?int $actor,private string $ip) {}
     public static function phone(?string $phone): ?string {
         $number=preg_replace('/[\s().-]+/u','',trim($phone ?? ''));
         if (is_string($number) && preg_match('/^\+?216([0-9]{8})$/D',$number,$m)) return '216'.$m[1];
