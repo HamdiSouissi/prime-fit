@@ -54,6 +54,7 @@ class CoachController {
             } catch (DomainException $ex) { if ($db->inTransaction()) $db->rollBack(); $error=$ex->getMessage(); }
               catch (PDOException $ex) { if ($db->inTransaction()) $db->rollBack();
                   if (($ex->errorInfo[0] ?? '')==='42S02' && (int)($ex->errorInfo[1] ?? 0)===1146 && (stripos((string)($ex->errorInfo[2] ?? ''),'courses')!==false || stripos((string)($ex->errorInfo[2] ?? ''),'course_bookings')!==false)) $error='Une table du module Cours est absente. Après sauvegarde, installez le module Cours avant de planifier une séance.';
+                  elseif (in_array((int)($ex->errorInfo[1] ?? 0),[1205,1213],true)) $error='Une modification concurrente a empêché l’opération. Vérifiez le planning actuel puis réessayez.';
                   elseif ($ex->getCode()==='23000') $error='Cette adresse e-mail est déjà utilisée.'; else throw $ex; }
         }
         $onlyOwn=$role==='Coach';

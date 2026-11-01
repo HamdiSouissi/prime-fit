@@ -52,6 +52,7 @@ class CourseController {
                         $stmt=$pdo->prepare('SELECT id,status FROM course_bookings WHERE course_id=? AND member_id=?'); $stmt->execute([$course,$member]); $existing=$stmt->fetch(); if ($existing && $existing['status']!=='cancelled') $this->fail('Ce membre est déjà inscrit à ce cours.');
                         $stmt=$pdo->prepare("SELECT COUNT(*) FROM course_bookings WHERE course_id=? AND status='confirmed'"); $stmt->execute([$course]); $status=(int)$stmt->fetchColumn() < (int)$c['capacity'] ? 'confirmed' : 'waiting';
                         if ($status==='confirmed' && $memberSchedule->hasPrivateConflict((int)$member,$c['starts_at'],$c['ends_at'])) $this->fail('Le membre a déjà une séance privée sur ce créneau.');
+                        if ($status==='confirmed' && $memberSchedule->hasConfirmedCourseConflict((int)$member,$c['starts_at'],$c['ends_at'],(int)$course)) $this->fail('Le membre est déjà inscrit à un autre cours collectif sur ce créneau.');
                         if ($existing) $pdo->prepare('UPDATE course_bookings SET status=?,created_at=NOW() WHERE id=?')->execute([$status,$existing['id']]); else $pdo->prepare('INSERT INTO course_bookings (course_id,member_id,status) VALUES (?,?,?)')->execute([$course,$member,$status]);
                         $this->log($pdo,'Réservation '.$status.' cours #'.$course.' membre #'.$member); $_SESSION['flash']=$status==='confirmed' ? 'Réservation confirmée.' : 'Cours complet : membre ajouté à la liste d’attente.';
                     } else {
@@ -71,6 +72,7 @@ class CourseController {
             } catch (DomainException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); $error=$ex->getMessage(); }
               catch (PDOException $ex) { if ($pdo->inTransaction()) $pdo->rollBack();
                   if (($ex->errorInfo[0] ?? '')==='42S02' && (int)($ex->errorInfo[1] ?? 0)===1146 && stripos((string)($ex->errorInfo[2] ?? ''),'private_sessions')!==false) $error='La table des séances privées est absente. Après sauvegarde, installez le module Coachs avant de gérer les cours et inscriptions.';
+                  elseif (in_array((int)($ex->errorInfo[1] ?? 0),[1205,1213],true)) $error='Une modification concurrente a empêché l’opération. Vérifiez les inscriptions actuelles puis réessayez.';
                   elseif ($ex->getCode()==='23000') $error='Cette salle ou réservation existe déjà.'; else throw $ex; }
         }
         $rooms=db()->query('SELECT * FROM rooms ORDER BY name')->fetchAll();

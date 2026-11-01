@@ -18,7 +18,10 @@ if ($s->promote(1,$start,$end,1)!==[2]) throw new RuntimeException('Candidat red
 if (!$s->hasConfirmedCourseConflict(2,$start,$end)) throw new RuntimeException('Promotion non détectée');
 $db->rollBack();
 if ($db->query('SELECT status FROM course_bookings WHERE id=5')->fetchColumn()!=='waiting') throw new RuntimeException('Rollback incorrect');
-foreach (['FROM subscriptions','FROM private_sessions'] as $check) { $found=false; foreach ($db->queries as $q) if (str_contains($q,$check) && str_contains($q,'FOR UPDATE')) $found=true; if (!$found) throw new RuntimeException('Lecture courante manquante : '.$check); }
+foreach (['FROM subscriptions','FROM private_sessions','JOIN courses c'] as $check) { $found=false; foreach ($db->queries as $q) if (str_contains($q,$check) && str_contains($q,'FOR UPDATE')) $found=true; if (!$found) throw new RuntimeException('Lecture courante manquante : '.$check); }
+// Un membre déjà confirmé sur un autre cours reste en attente ; un créneau adjacent reste permis.
+$db->exec("INSERT INTO courses VALUES (4,'scheduled','2030-05-01 10:30:00','2030-05-01 11:30:00'); INSERT INTO course_bookings VALUES (7,4,4,'confirmed','2029-01-01')");
+$db->beginTransaction(); if ($s->promote(1,$start,$end,1)!==[]) throw new RuntimeException('Promotion malgré chevauchement de cours'); $db->rollBack();
 // Une file de plus de 100 personnes conserve l'ordre même si les premiers candidats sont inéligibles.
 $db->exec("INSERT INTO courses VALUES (3,'scheduled','2030-05-01 10:00:00','2030-05-01 11:00:00')");
 for ($i=100; $i<=200; $i++) { $db->prepare("INSERT INTO members VALUES (?,'active')")->execute([$i]); $db->prepare("INSERT INTO course_bookings VALUES (?,3,?,'waiting','2029-01-01')")->execute([$i,$i]); }

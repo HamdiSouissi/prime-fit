@@ -20,11 +20,14 @@ class MemberSchedule {
         $stmt=$this->db->prepare("SELECT id FROM private_sessions WHERE member_id=? AND status='scheduled' AND starts_at<? AND ends_at>? LIMIT 1 FOR UPDATE");
         $stmt->execute([$member,$end,$start]); return (bool)$stmt->fetch();
     }
-    /** À appeler après les verrous coach et membre, avant toute lecture cohérente de la transaction. */
-    public function hasConfirmedCourseConflict(int $member,string $start,string $end): bool {
+    /** Sans lecture courante, appeler uniquement si l'instantané débute après le verrou membre. */
+    public function hasConfirmedCourseConflict(int $member,string $start,string $end,?int $excludeCourse=null,bool $currentRead=false): bool {
         $this->requireTransaction();
-        $stmt=$this->db->prepare("SELECT b.id FROM course_bookings b JOIN courses c ON c.id=b.course_id WHERE b.member_id=? AND b.status='confirmed' AND c.status='scheduled' AND c.starts_at<? AND c.ends_at>? LIMIT 1");
-        $stmt->execute([$member,$end,$start]); return (bool)$stmt->fetch();
+        // En promotion un instantané peut déjà exister avant le verrou membre : FOR UPDATE
+        // impose alors une lecture courante, quitte à provoquer un interblocage à réessayer.
+        $sql="SELECT b.id FROM course_bookings b JOIN courses c ON c.id=b.course_id WHERE b.member_id=? AND b.status='confirmed' AND c.status='scheduled' AND c.starts_at<? AND c.ends_at>? AND c.id<>? LIMIT 1";
+        $stmt=$this->db->prepare($sql.($currentRead ? ' FOR UPDATE' : ''));
+        $stmt->execute([$member,$end,$start,$excludeCourse ?? 0]); return (bool)$stmt->fetch();
     }
     /** Le cours doit être verrouillé ; renvoie les identifiants promus dans l'ordre d'inscription. */
     public function promote(int $course,string $start,string $end,int $places): array {
@@ -38,7 +41,7 @@ class MemberSchedule {
             if (!$batch) break;
             foreach ($batch as $candidate) {
                 $lastDate=$candidate['created_at']; $lastId=(int)$candidate['id']; $member=(int)$candidate['member_id'];
-                if (!$this->lockActiveMember($member) || !$this->hasSubscription($member,$start) || $this->hasPrivateConflict($member,$start,$end)) continue;
+                if (!$this->lockActiveMember($member) || !$this->hasSubscription($member,$start) || $this->hasPrivateConflict($member,$start,$end) || $this->hasConfirmedCourseConflict($member,$start,$end,$course,true)) continue;
                 $this->db->prepare("UPDATE course_bookings SET status='confirmed' WHERE id=? AND status='waiting'")->execute([$candidate['id']]); $promoted[]=(int)$candidate['id'];
                 if (count($promoted)>=$places) break;
             }

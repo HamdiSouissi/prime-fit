@@ -16,11 +16,21 @@ if (!str_contains($html,'déjà une séance privée') || (int)$db->query('SELECT
 $_POST=['action'=>'book','course_id'=>'1','member_id'=>'2']; try { (new CourseController())->index(); throw new RuntimeException('Inscription non créée'); } catch (RedirectTest $ex) {}
 $_POST=['action'=>'session','coach_id'=>'2','member_id'=>'2','starts_at'=>'2090-05-01T10:00','ends_at'=>'2090-05-01T11:00','price'=>'10']; ob_start(); (new CoachController())->index(); $html=ob_get_clean();
 if (!str_contains($html,'déjà inscrit à un cours collectif') || (int)$db->query('SELECT COUNT(*) FROM private_sessions')->fetchColumn()!==1) throw new RuntimeException('Conflit séance non rejeté');
+// Deux cours différents ne peuvent pas être confirmés sur des créneaux qui se chevauchent.
+$db->exec("INSERT INTO members VALUES (3,'Nour','C','PF3','active'),(4,'Meriem','D','PF4','active'); INSERT INTO subscriptions VALUES (3,3,'active','2090-01-01','2090-12-31'),(4,4,'active','2090-01-01','2090-12-31'); INSERT INTO courses VALUES (2,'Boxe',1,NULL,'scheduled','2090-05-01 10:30:00','2090-05-01 11:30:00',1),(3,'Pilates',1,NULL,'scheduled','2090-05-01 11:00:00','2090-05-01 12:00:00',5);");
+$_POST=['action'=>'book','course_id'=>'2','member_id'=>'2']; ob_start(); (new CourseController())->index(); $html=ob_get_clean();
+if (!str_contains($html,'déjà inscrit à un autre cours collectif')) throw new RuntimeException('Chevauchement de cours accepté');
+$_POST=['action'=>'book','course_id'=>'3','member_id'=>'2']; try { (new CourseController())->index(); throw new RuntimeException('Cours adjacent refusé'); } catch (RedirectTest $ex) {}
+$_POST=['action'=>'book','course_id'=>'2','member_id'=>'3']; try { (new CourseController())->index(); throw new RuntimeException('Réservation non créée'); } catch (RedirectTest $ex) {}
+foreach ([2,4] as $member) { $_POST=['action'=>'book','course_id'=>'2','member_id'=>(string)$member]; try { (new CourseController())->index(); throw new RuntimeException('Attente non créée'); } catch (RedirectTest $ex) {} }
+$cancel=(int)$db->query('SELECT id FROM course_bookings WHERE course_id=2 AND member_id=3')->fetchColumn();
+$_POST=['action'=>'cancel_booking','course_id'=>'2','booking_id'=>(string)$cancel]; try { (new CourseController())->index(); throw new RuntimeException('Annulation non effectuée'); } catch (RedirectTest $ex) {}
+if ($db->query('SELECT status FROM course_bookings WHERE course_id=2 AND member_id=2')->fetchColumn()!=='waiting' || $db->query('SELECT status FROM course_bookings WHERE course_id=2 AND member_id=4')->fetchColumn()!=='confirmed') throw new RuntimeException('Promotion sans tenir compte du cours confirmé');
 // La liste d'attente ne bloque pas une séance privée et la promotion refuse le conflit.
 $db->exec("UPDATE courses SET capacity=1 WHERE id=1");
 $_POST=['action'=>'book','course_id'=>'1','member_id'=>'1']; try { (new CourseController())->index(); throw new RuntimeException('Liste d’attente non créée'); } catch (RedirectTest $ex) {}
 if ($db->query("SELECT status FROM course_bookings WHERE member_id=1")->fetchColumn()!=='waiting') throw new RuntimeException('Liste d’attente incorrecte');
-$booking=(int)$db->query("SELECT id FROM course_bookings WHERE member_id=2")->fetchColumn();
+$booking=(int)$db->query("SELECT id FROM course_bookings WHERE course_id=1 AND member_id=2")->fetchColumn();
 $_POST=['action'=>'cancel_booking','course_id'=>'1','booking_id'=>(string)$booking]; try { (new CourseController())->index(); throw new RuntimeException('Annulation non enregistrée'); } catch (RedirectTest $ex) {}
 if ($db->query("SELECT status FROM course_bookings WHERE member_id=1")->fetchColumn()!=='waiting') throw new RuntimeException('Promotion malgré séance privée');
 echo "Planning membre : contrôleurs cours et séance appliquent les deux contrôles OK\n";
