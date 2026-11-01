@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/../services/MemberPortalAuth.php';
 require_once __DIR__.'/../services/MemberPortalInvitations.php';
 require_once __DIR__.'/../services/MemberPortalData.php';
+require_once __DIR__.'/../services/MemberPortalBooking.php';
 require_once __DIR__.'/../services/LoginRateLimiter.php';
 /** Pages isolées de l'espace du personnel ; chaque requête protégée revalide la session. */
 final class MemberPortalController {
@@ -23,7 +24,7 @@ final class MemberPortalController {
                 $stmt->execute([$email]); $memberId=$stmt->fetchColumn();
                 $this->limit($memberId ? 'login-id:'.$memberId : 'login-unknown:'.mb_strtolower($email,'UTF-8'));
                 $session=(new MemberPortalAuth(db()))->authenticate($email,is_string($pwd) ? $pwd : '');
-                if ($session) { session_regenerate_id(true); $_SESSION['member_portal']=$session; unset($_SESSION['csrf']); redirect('member_space'); }
+                if ($session) { session_regenerate_id(true); $_SESSION['member_portal']=$session; unset($_SESSION['csrf'],$_SESSION['portal_notice']); redirect('member_space'); }
                 $error='Identifiants incorrects.';
             } catch (DomainException $e) { $error=$e->getMessage(); }
         }
@@ -53,11 +54,28 @@ final class MemberPortalController {
     public function space(): void {
         $this->secureHeaders(); $auth=new MemberPortalAuth(db());
         if (!$auth->validSession($_SESSION['member_portal'] ?? null)) { unset($_SESSION['member_portal']); redirect('member_login'); }
+        if ($_SERVER['REQUEST_METHOD']==='POST') {
+            verify_csrf();
+            $id=filter_var($_POST['course_id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+            try {
+                if (($_POST['action'] ?? '')!=='book' || !$id) throw new DomainException('Demande de réservation invalide.');
+                $status=(new MemberPortalBooking(db()))->book($_SESSION['member_portal'],(int)$id,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
+                $_SESSION['portal_notice']=['type'=>'success','message'=>$status==='confirmed' ? 'Votre inscription est confirmée.' : 'Ce cours est complet : vous êtes sur la liste d’attente.'];
+            } catch (DomainException $e) {
+                $_SESSION['portal_notice']=['type'=>'error','message'=>$e->getMessage()];
+            } catch (PDOException $e) {
+                // Ne pas exposer les erreurs SQL ; en cas de verrou concurrent, proposer un nouvel essai.
+                error_log('Réservation membre indisponible : '.$e->getMessage());
+                $_SESSION['portal_notice']=['type'=>'error','message'=>'La réservation n’a pas pu être enregistrée. Vérifiez vos inscriptions puis réessayez.'];
+            }
+            redirect('member_space');
+        }
+        $notice=$_SESSION['portal_notice'] ?? null; unset($_SESSION['portal_notice']);
         $data=(new MemberPortalData(db()))->get($_SESSION['member_portal']['member_id']);
         require __DIR__.'/../views/member_portal.php';
     }
     public function logout(): void {
         $this->secureHeaders(); if ($_SERVER['REQUEST_METHOD']!=='POST') { http_response_code(405); exit; }
-        verify_csrf(); unset($_SESSION['member_portal'],$_SESSION['member_activation'],$_SESSION['csrf']); session_regenerate_id(true); redirect('member_login');
+        verify_csrf(); unset($_SESSION['member_portal'],$_SESSION['member_activation'],$_SESSION['portal_notice'],$_SESSION['csrf']); session_regenerate_id(true); redirect('member_login');
     }
 }

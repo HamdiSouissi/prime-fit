@@ -17,7 +17,7 @@ final class MemberPortalData {
         $measurements=$this->rows('SELECT measured_on,weight_kg,height_cm,waist_cm FROM fitness_measurements WHERE member_id=? ORDER BY measured_on DESC,id DESC LIMIT 20',[$memberId]);
         $programs=$this->rows('SELECT title,objective,content,status,created_at FROM fitness_programs WHERE member_id=? ORDER BY created_at DESC,id DESC LIMIT 20',[$memberId]);
         $bookings=$this->rows("SELECT c.title,c.starts_at,c.ends_at,c.status AS course_status,b.status AS booking_status,r.name AS room FROM course_bookings b JOIN courses c ON c.id=b.course_id JOIN rooms r ON r.id=c.room_id WHERE b.member_id=? ORDER BY c.starts_at DESC,c.id DESC LIMIT 20",[$memberId]);
-        $courses=$this->rows("SELECT c.id,c.title,c.starts_at,c.ends_at,c.capacity,r.name AS room,(SELECT COUNT(*) FROM course_bookings b WHERE b.course_id=c.id AND b.status='confirmed') AS booked FROM courses c JOIN rooms r ON r.id=c.room_id WHERE c.status='scheduled' AND c.starts_at>? ORDER BY c.starts_at,c.id LIMIT 20",[$now->format('Y-m-d H:i:s')]);
+        $courses=$this->rows("SELECT c.id,c.title,c.starts_at,c.ends_at,c.capacity,r.name AS room,own.status AS own_status,(SELECT COUNT(*) FROM course_bookings b WHERE b.course_id=c.id AND b.status='confirmed') AS booked FROM courses c JOIN rooms r ON r.id=c.room_id LEFT JOIN course_bookings own ON own.course_id=c.id AND own.member_id=? WHERE c.status='scheduled' AND c.starts_at>? ORDER BY c.starts_at,c.id LIMIT 20",[$memberId,$now->format('Y-m-d H:i:s')]);
         return compact('member','visits','monthVisits','subscriptions','attendance','measurements','programs','bookings','courses','today');
     }
 }
