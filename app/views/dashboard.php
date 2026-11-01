@@ -15,7 +15,7 @@ if ($canAttendance) $summaryParts[]=(int)$data['visits'].' passage(s) accepté(s
 if ($canFinance) $summaryParts[]=dt($data['today']).' nets aujourd’hui pour les abonnements';
 $summaryParts[]=(int)$data['expiring']>0 ? (int)$data['expiring'].' abonnement(s) expirent d’ici 7 jours' : 'Aucun abonnement n’expire d’ici 7 jours';
 $summary=implode(' · ',$summaryParts).'.';
-$colors = ['#FFD400', '#EF4444', '#9CA3AF', '#22C55E'];
+$colors = ['var(--chart-accent)', '#EF4444', '#9CA3AF', '#22C55E'];
 ?>
 <section class="hero" aria-label="Résumé du jour"><div class="hero-copy"><h1>Bonjour, <?= e($first) ?></h1><p class="hero-summary"><?= e($summary) ?></p><div class="hero-actions">
 <?php if (in_array($role, ['Admin','Gérant','Réceptionniste','Comptable'], true)): ?><a class="btn btn-primary" href="payments"><i data-lucide="wallet-cards"></i>Enregistrer un paiement</a><?php endif; ?>
@@ -23,7 +23,7 @@ $colors = ['#FFD400', '#EF4444', '#9CA3AF', '#22C55E'];
 <a class="btn btn-outline" href="members"><i data-lucide="users-round"></i>Voir les membres</a>
 <a class="btn btn-outline" href="./"><i data-lucide="globe" aria-hidden="true"></i>Voir le site principal</a></div></div>
 <?php if ($canFinance): ?><div class="hero-panel"><span>Encaissements nets abonnements · mois</span><strong><?= e(dt($data['month'])) ?></strong>
-<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="Encaissements des abonnements sur six mois"><defs><linearGradient id="sparkStroke" x1="0" x2="1"><stop offset="0" stop-color="#FFD400"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient><linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#FFD400" stop-opacity=".28"/><stop offset="1" stop-color="#FFD400" stop-opacity="0"/></linearGradient></defs><polygon class="area" points="<?= e($area) ?>"/><polyline class="line" points="<?= e($line) ?>"/></svg>
+<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="Encaissements des abonnements sur six mois"><defs><linearGradient id="sparkStroke" x1="0" x2="1"><stop offset="0" stop-color="#E8FF00"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient><linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#E8FF00" stop-opacity=".28"/><stop offset="1" stop-color="#E8FF00" stop-opacity="0"/></linearGradient></defs><polygon class="area" points="<?= e($area) ?>"/><polyline class="line" points="<?= e($line) ?>"/></svg>
 <div class="spark-labels"><?php foreach ($data['labels'] as $l): ?><span><?= e($l) ?></span><?php endforeach; ?></div></div><?php else: ?><div class="hero-panel"><span>Membres actifs</span><strong><?= (int)$data['active'] ?></strong><p>Avec un abonnement en cours</p></div><?php endif; ?></section>
 
 <div class="section-heading"><div><h2>Vue d’ensemble</h2><p>Les chiffres clés de votre activité</p></div><span class="live"><span></span> Données en direct</span></div>

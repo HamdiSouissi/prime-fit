@@ -171,8 +171,8 @@
 
   /* ---------- Graphiques ---------- */
   const charts = [];
-  const lineColor = () => root.classList.contains('light') ? '#A07C00' : '#FFD400';
-  const palette = ['#FFD400', '#EF4444', '#9CA3AF', '#22C55E'];
+  const lineColor = () => css('--chart-accent') || (root.classList.contains('light') ? '#586200' : '#E8FF00');
+  const palette = () => [lineColor(), '#EF4444', '#9CA3AF', '#22C55E'];
   function themeCharts() {
     if (!window.Chart) return;
     Chart.defaults.color = css('--muted');
@@ -180,6 +180,8 @@
       const y = c.options.scales && c.options.scales.y;
       if (y && y.grid) y.grid.color = css('--border');
       if (c.config.type === 'line') { const ds = c.data.datasets[0]; ds.borderColor = lineColor(); ds.pointBorderColor = lineColor(); if (ds.pointBackgroundColor !== '#0A0A0A') ds.pointBackgroundColor = lineColor(); }
+      if (c.config.type === 'bar') c.data.datasets[0].backgroundColor = lineColor();
+      if (c.config.type === 'doughnut' && window.dashboardData?.planValues?.some(Boolean)) c.data.datasets[0].backgroundColor = palette();
       c.update('none');
     });
   }
@@ -194,19 +196,19 @@
 
   if (window.fitnessData && $('#fitnessChart')) {
     const d = window.fitnessData, ctx = $('#fitnessChart').getContext('2d');
-    const g = ctx.createLinearGradient(0, 0, 0, 220); g.addColorStop(0, 'rgba(255,212,0,.3)'); g.addColorStop(1, 'rgba(255,212,0,0)');
+    const g = ctx.createLinearGradient(0, 0, 0, 220); g.addColorStop(0, 'rgba(232,255,0,.3)'); g.addColorStop(1, 'rgba(232,255,0,0)');
     charts.push(new Chart(ctx, { type: 'line', data: { labels: d.labels, datasets: [{ label: 'Poids (kg)', data: d.values, borderColor: lineColor(), backgroundColor: g, fill: true, tension: .35, pointRadius: 3, pointBackgroundColor: lineColor(), borderWidth: 2.5 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip }, scales: { y: { beginAtZero: false, grid: { color: css('--border') }, border: { display: false } }, x: { grid: { display: false }, border: { display: false } } } } }));
   }
 
   if (window.reportData && $('#reportChart')) {
     const d = window.reportData;
-    charts.push(new Chart($('#reportChart'), {type:'bar', data:{labels:d.labels,datasets:[{label:'Encaissements',data:d.income,backgroundColor:'#FFD400',borderRadius:3},{label:'Dépenses',data:d.expense,backgroundColor:'#EF4444',borderRadius:3}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true},tooltip},scales:{x:{grid:{display:false},border:{display:false}},y:{beginAtZero:true,grid:{color:css('--border')},border:{display:false},ticks:{callback:v=>v+' DT'}}}}}));
+    charts.push(new Chart($('#reportChart'), {type:'bar', data:{labels:d.labels,datasets:[{label:'Encaissements',data:d.income,backgroundColor:lineColor(),borderRadius:3},{label:'Dépenses',data:d.expense,backgroundColor:'#EF4444',borderRadius:3}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true},tooltip},scales:{x:{grid:{display:false},border:{display:false}},y:{beginAtZero:true,grid:{color:css('--border')},border:{display:false},ticks:{callback:v=>v+' DT'}}}}}));
   }
 
   if (window.dashboardData && $('#revenueChart')) {
     const d = window.dashboardData, ctx = $('#revenueChart').getContext('2d');
-    const g = ctx.createLinearGradient(0, 0, 0, 220); g.addColorStop(0, 'rgba(255,212,0,.32)'); g.addColorStop(1, 'rgba(255,212,0,0)');
+    const g = ctx.createLinearGradient(0, 0, 0, 220); g.addColorStop(0, 'rgba(232,255,0,.32)'); g.addColorStop(1, 'rgba(232,255,0,0)');
     charts.push(new Chart(ctx, { type: 'line', data: { labels: d.labels, datasets: [{ data: d.values, borderColor: lineColor(), backgroundColor: g, fill: true, tension: .4, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#0A0A0A', pointBorderColor: lineColor(), pointBorderWidth: 2, borderWidth: 2.5 }] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
         plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: c => c.parsed.y.toLocaleString('fr-FR', { minimumFractionDigits: 3 }) + ' DT' } } },
@@ -215,7 +217,7 @@
   if (window.dashboardData && $('#planChart')) {
     const d = window.dashboardData;
     const has = d.planValues.some(Boolean);
-    charts.push(new Chart($('#planChart'), { type: 'doughnut', data: { labels: d.planLabels, datasets: [{ data: has ? d.planValues : [1], backgroundColor: has ? palette : ['#3A3A3A'], borderWidth: 0, spacing: 4, borderRadius: 8, hoverOffset: 6 }] },
+    charts.push(new Chart($('#planChart'), { type: 'doughnut', data: { labels: d.planLabels, datasets: [{ data: has ? d.planValues : [1], backgroundColor: has ? palette() : ['#3A3A3A'], borderWidth: 0, spacing: 4, borderRadius: 8, hoverOffset: 6 }] },
       options: { responsive: true, maintainAspectRatio: false, cutout: '78%', plugins: { legend: { display: false }, tooltip: { ...tooltip, enabled: has } } } }));
   }
   clearSkeleton();
