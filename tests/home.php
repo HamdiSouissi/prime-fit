@@ -5,7 +5,7 @@ $db->exec("CREATE TABLE gym_settings (id INTEGER PRIMARY KEY,phone TEXT,email TE
 function db(): PDO { global $db; return $db; } function e($v): string { return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); } function gym_name(): string { return 'Horizon <Sport>'; }
 require __DIR__.'/../app/controllers/HomeController.php'; $_SERVER['REQUEST_METHOD']='GET'; $_SESSION=[];
 ob_start(); (new HomeController())->index(); $html=ob_get_clean();
-foreach (['Horizon &lt;Sport&gt;','href="login"','href="#contact"','href="tel:+21612345678"','href="mailto:contact@example.tn"','&lt;Rue&gt; test','Lundi 08h–20h','assets/landing','assets/home.css'] as $needle) {
+foreach (['Horizon &lt;Sport&gt;','href="login"','href="#contact"','href="tel:+21612345678"','href="mailto:contact@example.tn"','&lt;Rue&gt; test','Lundi 08h–20h','assets/landing','assets/home.css','data-carousel-track','data-carousel-toggle','data-parallax','data-reveal'] as $needle) {
     // The hero image is referenced by the stylesheet rather than inline markup.
     if ($needle==='assets/landing') continue;
     if (!str_contains($html,$needle)) throw new RuntimeException('Accueil : élément manquant '.$needle);
