@@ -9,6 +9,7 @@ require __DIR__ . '/../app/controllers/MemberHistoryController.php';
 require __DIR__ . '/../app/controllers/PaymentController.php';
 require __DIR__ . '/../app/controllers/AttendanceController.php';
 require __DIR__ . '/../app/controllers/CourseController.php';
+require __DIR__ . '/../app/controllers/CourseBookingsController.php';
 require __DIR__ . '/../app/controllers/CourseEditController.php';
 require __DIR__ . '/../app/controllers/CoachController.php';
 require __DIR__ . '/../app/controllers/CoachProfileController.php';
@@ -63,6 +64,7 @@ try {
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }
     elseif (in_array($page, ['payments', 'receipt', 'payment_refund'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); elseif ($page === 'payment_refund') $controller->refund(); else $controller->index(); }
     elseif ($page === 'attendance') { if (!isset($_SESSION['user'])) redirect('login'); (new AttendanceController())->index(); }
+    elseif ($page === 'course_bookings') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseBookingsController())->index(); }
     elseif ($page === 'course_edit') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseEditController())->index(); }
     elseif ($page === 'courses') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseController())->index(); }
     elseif ($page === 'coach_profile') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachProfileController())->index(); }

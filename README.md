@@ -77,7 +77,15 @@ Admin, Gérant et Réceptionniste peuvent enregistrer un passage à partir du nu
 
 Le planning permet de rechercher les cours par nom, salle ou coach et de filtrer par dates de début et par statut, avec 20 résultats par page. Par défaut il affiche les cours à partir du jour courant ; effacer la date de début permet de retrouver les cours passés. Le statut « planifié » comprend aussi les cours déjà passés non annulés. La recherche utilise les noms actuels, pas des noms historisés. Le planning permet aussi de créer des salles et des cours, d'attribuer un utilisateur ayant le rôle Coach, d'inscrire un membre et d'annuler un cours ou une inscription avant son début. Un abonnement actif couvrant la date du cours est nécessaire pour réserver. La capacité est contrôlée sous verrou ; au-delà, les inscriptions rejoignent une liste d'attente. À l'annulation d'une place confirmée, le premier membre toujours éligible est promu automatiquement. Les salles ne peuvent pas accueillir deux cours simultanés. Les rôles Admin, Gérant et Réceptionniste gèrent le planning ; le Coach le consulte.
 
-Les comptes coach peuvent être créés dans le module Coachs. Les conflits de planning du coach avec d'autres cours collectifs et avec les séances privées sont vérifiés à la création. Les notifications de promotion, l'espace membre et l'historique des réservations annulées dans l'interface restent à développer. Les membres en attente devenus inéligibles restent en attente et sont ignorés lors de la promotion.
+Les comptes coach peuvent être créés dans le module Coachs. Les conflits de planning du coach avec d'autres cours collectifs et avec les séances privées sont vérifiés à la création. Les notifications de promotion, l'espace membre et un journal complet des changements d’inscription restent à développer. Les membres en attente devenus inéligibles restent en attente et sont ignorés lors de la promotion.
+
+### Registre des inscriptions aux cours
+
+Depuis **Cours collectifs → Inscriptions → Voir le registre complet**, Admin, Gérant, Réceptionniste et Coach peuvent parcourir les inscriptions d’un cours, y compris celles dont le statut actuel est annulé. Le registre est filtrable par statut et paginé par 20 lignes ; il est également accessible pour un cours passé ou annulé. Comme pour le planning actuel, les Coachs peuvent consulter les inscriptions de tous les cours, pas seulement des leurs ; le Comptable ne peut pas y accéder.
+
+Ce registre montre **l’état actuel**, pas un journal chronologique : une réinscription réutilise la même ligne et peut remplacer l’ancienne annulation ; les promotions et anciens statuts ne sont pas reconstitués. La date d’inscription affichée est celle de la dernière inscription et la date de mise à jour reflète la dernière modification enregistrée. Les noms et les informations du cours sont leurs valeurs actuelles. Les résultats peuvent changer pendant la pagination. Aucune notification ou modification n’est effectuée depuis le registre. Protégez ces données et définissez une durée de conservation adaptée.
+
+Aucune migration supplémentaire n’est nécessaire si la table `course_bookings` est à jour ; la consultation reste à vérifier sur MySQL/Laragon.
 
 ## Coachs et séances privées
 

@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+$db=new PDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
+$db->exec("CREATE TABLE rooms (id INTEGER PRIMARY KEY,name TEXT); CREATE TABLE courses (id INTEGER PRIMARY KEY,title TEXT,room_id INTEGER,starts_at TEXT,ends_at TEXT,status TEXT); CREATE TABLE members (id INTEGER PRIMARY KEY,first_name TEXT,last_name TEXT); CREATE TABLE course_bookings (id INTEGER PRIMARY KEY,course_id INTEGER,member_id INTEGER,status TEXT,created_at TEXT,updated_at TEXT); INSERT INTO rooms VALUES (1,'Salle'); INSERT INTO courses VALUES (1,'Yoga',1,'2030-01-01 10:00:00','2030-01-01 11:00:00','scheduled'); INSERT INTO members VALUES (1,'Ali','Test'); INSERT INTO course_bookings VALUES (1,1,1,'cancelled','2029-12-01 10:00:00','2029-12-02 10:00:00')");
+function db(): PDO { global $db; return $db; } function e($v): string { return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); } function gym_name(): string { return 'Salle'; } function gym_brand_markup(): string { return 'Salle'; } function csrf(): string { return 'csrf'; }
+require __DIR__.'/../app/controllers/CourseBookingsController.php'; $_SESSION=['user'=>['id'=>1,'role'=>'Coach','name'=>'Coach']]; $_SERVER['REQUEST_METHOD']='GET'; $_GET=['id'=>'1','status'=>'cancelled'];
+ob_start(); (new CourseBookingsController())->index(); $html=ob_get_clean(); if (!str_contains($html,'Ali Test') || !str_contains($html,'Annulée') || !str_contains($html,'1 inscription(s)')) throw new RuntimeException('Registre non rendu');
+$_GET['status']='bad'; ob_start(); (new CourseBookingsController())->index(); $html=ob_get_clean(); if (http_response_code()!==422 || !str_contains($html,'Statut d’inscription invalide') || str_contains($html,'Ali Test')) throw new RuntimeException('Filtre invalide non signalé');
+echo "Cours : contrôleur et erreur de filtre OK\n";
