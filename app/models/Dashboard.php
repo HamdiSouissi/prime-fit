@@ -9,7 +9,8 @@ class Dashboard {
         if (!in_array($role,['Admin','Gérant','Réceptionniste','Coach','Comptable'],true)) throw new DomainException('Rôle non autorisé.');
         $canFinance=in_array($role,['Admin','Gérant','Réceptionniste','Comptable'],true);
         $canAttendance=in_array($role,['Admin','Gérant','Réceptionniste','Coach'],true);
-        $now=($now ?? new DateTimeImmutable('today'))->setTime(0,0); $today=$now->format('Y-m-d'); $tomorrow=$now->modify('+1 day')->format('Y-m-d'); $week=$now->modify('+7 days')->format('Y-m-d');
+        $instant=$now ?? new DateTimeImmutable();
+        $now=$instant->setTime(0,0); $today=$now->format('Y-m-d'); $tomorrow=$now->modify('+1 day')->format('Y-m-d'); $week=$now->modify('+7 days')->format('Y-m-d');
         $active=(int)$this->scalar("SELECT COUNT(DISTINCT s.member_id) FROM subscriptions s JOIN members m ON m.id=s.member_id WHERE m.status='active' AND s.status='active' AND s.start_date<=? AND s.end_date>=?",[$today,$today]);
         $expiring=(int)$this->scalar("SELECT COUNT(*) FROM subscriptions s JOIN members m ON m.id=s.member_id WHERE m.status='active' AND s.status='active' AND s.start_date<=? AND s.end_date BETWEEN ? AND ?",[$today,$today,$week]);
         $recent=$this->rows('SELECT m.first_name,m.last_name,m.phone,m.avatar_color,s.start_date,s.end_date,s.status,p.name AS plan FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id ORDER BY s.created_at DESC,s.id DESC LIMIT 5');
@@ -30,6 +31,28 @@ class Dashboard {
             $labels=[]; $values=[]; $months=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
             for ($i=0;$i<6;$i++) { $date=$start->modify('+'.$i.' months'); $labels[]=$months[(int)$date->format('n')-1]; $values[]=$chart[$date->format('Y-m')] ?? 0; }
             $data['labels']=$labels; $data['values']=$values;
+        }
+        // Independent operational widgets: an unavailable module must not hide the dashboard.
+        $canSeeCourses=in_array($role,['Admin','Gérant','Réceptionniste','Coach'],true);
+        $canSeeShop=in_array($role,['Admin','Gérant','Réceptionniste','Comptable'],true);
+        $data['canSeeCourses']=$canSeeCourses; $data['canSeeShop']=$canSeeShop;
+        if ($canSeeCourses) {
+            $data['upcomingCourses']=null;
+            try {
+                $data['upcomingCourses']=$this->rows("SELECT c.title,c.starts_at,r.name AS room FROM courses c JOIN rooms r ON r.id=c.room_id WHERE c.status='scheduled' AND c.starts_at>=? AND c.starts_at<? ORDER BY c.starts_at,c.id LIMIT 4",[$instant->format('Y-m-d H:i:s'),$instant->modify('+7 days')->format('Y-m-d H:i:s')]);
+            } catch (PDOException $ex) { error_log('Cours du tableau de bord indisponibles : '.$ex->getMessage()); }
+        }
+        if ($canSeeShop) {
+            $data['lowStock']=null; $data['shopToday']=null;
+            try {
+                $data['lowStock']=$this->rows('SELECT name,sku,stock,low_stock_threshold FROM products WHERE is_active=1 AND stock<=low_stock_threshold ORDER BY stock ASC,name ASC,id ASC LIMIT 4');
+                $data['lowStockCount']=(int)$this->scalar('SELECT COUNT(*) FROM products WHERE is_active=1 AND stock<=low_stock_threshold');
+                $data['shopToday']=(float)$this->scalar('SELECT COALESCE(SUM(total),0) FROM shop_sales WHERE sold_at>=? AND sold_at<?',[$today,$tomorrow]);
+            } catch (PDOException $ex) {
+                // Never show partial results as complete when the module is unavailable.
+                $data['lowStock']=null; $data['shopToday']=null; unset($data['lowStockCount']);
+                error_log('Boutique du tableau de bord indisponible : '.$ex->getMessage());
+            }
         }
         return $data;
     }
