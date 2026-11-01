@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../services/StockManager.php';
+require_once __DIR__.'/../services/ShopSaleService.php';
 /** Boutique : stocks et ventes d'un seul produit par opération. */
 class ShopController {
     private function fail(string $message): void { throw new DomainException($message); }
@@ -41,31 +42,24 @@ class ShopController {
                         $change=$service->adjust($id,$counted,$expected,$note); $_SESSION['flash']='Stock corrigé de '.($change>0?'+':'').$change.' unité(s).';
                     }
                     redirect('shop&product='.$id);
-                } elseif (in_array($action,['restock','sale'],true)) {
+                } elseif ($action==='sale') {
+                    $selection=$_POST['product_id'] ?? ''; $quantity=filter_var($_POST['quantity'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]);
+                    $method=$_POST['method'] ?? ''; $token=$_POST['request_token'] ?? '';
+                    if (!is_string($selection) || !preg_match('/^(\d+)\|([a-f0-9]{64})$/D',$selection,$matches) || (int)$matches[1]<1 || !$quantity || !is_string($method) || !is_string($token)) $this->fail('Vérifiez le produit, la quantité et le moyen de paiement.');
+                    $result=(new ShopSaleService($pdo,(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? ''))->sell((int)$matches[1],$matches[2],$quantity,$method,$token);
+                    $_SESSION['shop_sale_notice']=['id'=>$result['id'],'message'=>$result['replayed'] ? 'Cette vente avait déjà été enregistrée : aucun nouveau stock n’a été déduit.' : 'Vente enregistrée et stock mis à jour.'];
+                    redirect('shop_receipt&id='.$result['id']);
+                } elseif ($action==='restock') {
                     $product=filter_var($_POST['product_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
                     $quantity=filter_var($_POST['quantity'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]);
-                    $method=$_POST['method'] ?? '';
-                    if (!$product || !$quantity || ($action==='sale' && !in_array($method,['espèces','chèque','virement','D17','Flouci','carte bancaire'],true))) $this->fail('Vérifiez le produit, la quantité et le moyen de paiement.');
+                    if (!$product || !$quantity) $this->fail('Vérifiez le produit et la quantité.');
                     $pdo->beginTransaction();
                     $stmt=$pdo->prepare('SELECT * FROM products WHERE id=? FOR UPDATE'); $stmt->execute([$product]); $item=$stmt->fetch();
                     if (!$item || !$item['is_active']) $this->fail('Produit introuvable ou inactif.');
-                    if ($action==='restock') {
-                        if ((int)$item['stock']+$quantity>1000000) $this->fail('Le stock ne peut pas dépasser 1 000 000 unités.');
-                        $pdo->prepare('UPDATE products SET stock=stock+? WHERE id=?')->execute([$quantity,$product]);
-                        $pdo->prepare("INSERT INTO stock_movements (product_id,quantity_change,reason,created_by) VALUES (?,?,'restock',?)")->execute([$product,$quantity,$_SESSION['user']['id']]);
-                        $this->audit($pdo,'Réapprovisionnement produit #'.$product); $_SESSION['flash']='Stock mis à jour.';
-                    } else {
-                        if ((int)$item['stock']<$quantity) $this->fail('Stock insuffisant pour cette vente.');
-                        $parts=explode('.',(string)$item['price'],2); $millimes=(int)$parts[0]*1000+(int)str_pad($parts[1] ?? '',3,'0');
-                        if ($millimes*$quantity > 9999999999999) $this->fail('Le total dépasse le montant maximal autorisé.');
-                        // Calcul SQL DECIMAL exact ; prix et total sont figés à la vente.
-                        $pdo->prepare('INSERT INTO shop_sales (product_id,product_name_snapshot,product_sku_snapshot,quantity,unit_price,total,method,sold_by) VALUES (?,?,?,?,?,CAST(? AS DECIMAL(10,3))*?,?,?)')->execute([$product,$item['name'],$item['sku'],$quantity,$item['price'],$item['price'],$quantity,$method,$_SESSION['user']['id']]);
-                        $sale=(int)$pdo->lastInsertId(); $pdo->prepare('UPDATE products SET stock=stock-? WHERE id=?')->execute([$quantity,$product]);
-                        $pdo->prepare("INSERT INTO stock_movements (product_id,quantity_change,reason,sale_id,created_by) VALUES (?,?,'sale',?,?)")->execute([$product,-$quantity,$sale,$_SESSION['user']['id']]);
-                        $this->audit($pdo,'Vente boutique #'.$sale); $_SESSION['flash']='Vente enregistrée et stock mis à jour.';
-                    }
-                    $pdo->commit();
-                    if ($action==='sale') redirect('shop_receipt&id='.$sale);
+                    if ((int)$item['stock']+$quantity>1000000) $this->fail('Le stock ne peut pas dépasser 1 000 000 unités.');
+                    $pdo->prepare('UPDATE products SET stock=stock+? WHERE id=?')->execute([$quantity,$product]);
+                    $pdo->prepare("INSERT INTO stock_movements (product_id,quantity_change,reason,created_by) VALUES (?,?,'restock',?)")->execute([$product,$quantity,$_SESSION['user']['id']]);
+                    $this->audit($pdo,'Réapprovisionnement produit #'.$product); $pdo->commit(); $_SESSION['flash']='Stock mis à jour.';
                 } else $this->fail('Action invalide.');
                 redirect('shop');
             } catch (DomainException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); $error=$ex->getMessage(); }
@@ -76,6 +70,7 @@ class ShopController {
               }
         }
         $products=$pdo->query('SELECT * FROM products ORDER BY name,id')->fetchAll();
+        $requestToken=bin2hex(random_bytes(32));
         $selectedId=filter_var($_GET['product'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $selectedProduct=null; $movements=[];
         if ($selectedId) {
             $stmt=$pdo->prepare('SELECT * FROM products WHERE id=?'); $stmt->execute([$selectedId]); $selectedProduct=$stmt->fetch();
@@ -107,6 +102,8 @@ class ShopController {
             if (!(($info[0] ?? '')==='42S02' && (int)($info[1] ?? 0)===1146 && stripos((string)($info[2] ?? ''),'gym_settings')!==false)) throw $ex;
         }
         header('Cache-Control: private, no-store');
+        $notice=''; $savedNotice=$_SESSION['shop_sale_notice'] ?? null;
+        if (is_array($savedNotice) && ($savedNotice['id'] ?? null)===(int)$sale['id']) { $notice=$savedNotice['message']; unset($_SESSION['shop_sale_notice']); }
         require __DIR__.'/../views/shop_receipt.php';
     }
 

@@ -82,6 +82,8 @@ try {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_name.sql dans la base utilisée, puis réessayez.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'marketing_consent_events') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/marketing_consent.sql dans la base utilisée.';
+    } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'shop_sale_requests') !== false) {
+        echo 'La boutique doit être mise à jour : après sauvegarde, importez database/shop_sale_requests.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'subscription_discounts') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_discounts.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'payment_refunds') !== false) {

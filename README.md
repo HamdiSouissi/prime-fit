@@ -89,7 +89,7 @@ Les ventes boutique sont séparées des paiements d'abonnement : elles ne figure
 
 Après une vente, le reçu s’ouvre et peut être imprimé ou enregistré en PDF via le navigateur. Retrouvez-le aussi depuis **Boutique → Ventes boutique**, en choisissant la date de la vente. Admin, Gérant, Réceptionniste et Comptable peuvent consulter les reçus ; les Coachs n’y ont pas accès. Le document est un justificatif de vente, **pas une facture fiscale** : TVA et timbre ne sont pas calculés et le moyen de paiement déclaré ne prouve pas un règlement bancaire. Il ne crée ni paiement supplémentaire, ni remboursement, ni transfert.
 
-Les nouvelles ventes figent le nom et la référence du produit, ainsi que le prix unitaire et le total. Pour les ventes précédentes, le nom et la référence d’origine ne sont pas connus : le reçu affiche les valeurs actuelles du catalogue avec un avertissement. Le nom et les coordonnées de la salle sont les valeurs actuelles. Un reçu déjà imprimé ne change pas ; il n’y a pas de reçu archivé immuable. Aucun client n’est associé aux ventes boutique. Le formulaire de vente ne dispose pas encore de protection anti-doublon : en cas d’incertitude après une erreur réseau, vérifiez la liste des ventes avant de recommencer.
+Les nouvelles ventes figent le nom et la référence du produit, ainsi que le prix unitaire et le total. Pour les ventes précédentes, le nom et la référence d’origine ne sont pas connus : le reçu affiche les valeurs actuelles du catalogue avec un avertissement. Le nom et les coordonnées de la salle sont les valeurs actuelles. Un reçu déjà imprimé ne change pas ; il n’y a pas de reçu archivé immuable. Aucun client n’est associé aux ventes boutique. La répétition de la même demande de vente utilise un jeton unique et renvoie vers le reçu initial sans déduire à nouveau le stock. Une nouvelle ouverture du formulaire génère un nouveau jeton : vérifiez toujours la liste des ventes en cas d’incertitude avant de créer une nouvelle demande.
 
 Pour une base existante, après sauvegarde, importer une seule fois (remplacez `prime_fit` par votre base) :
 
@@ -98,6 +98,18 @@ mysql -u root -p prime_fit < database/shop_sale_receipts.sql
 ```
 
 Les nouvelles installations utilisent `schema.sql` à jour ; la création de nouvelles tables via `shop.sql` inclut également ces colonnes, mais ce fichier ne modifie pas une table existante. Si les colonnes existent déjà, ne réimportez pas cette migration. Les ventes existantes ne sont pas modifiées. L’import et les verrous restent à tester sur MySQL/Laragon.
+
+### Sécurisation des ventes boutique
+
+Le prix, le nom, la référence et l’état affichés du produit sont vérifiés sous verrou avant la vente. Si le produit a changé, la vente est refusée ; vérifiez les valeurs actualisées. La disponibilité du stock est vérifiée au moment de la vente. La même demande soumise plusieurs fois ne crée qu’une vente, même si le stock ou le produit a changé depuis ; une demande portant le même jeton mais un contenu différent est refusée. La réservation du jeton, la vente, la déduction du stock et l’audit sont enregistrés dans une transaction. PHP 64 bits est nécessaire pour le calcul des montants.
+
+Après sauvegarde, une base existante ayant déjà `shop_sales` doit recevoir :
+
+```sh
+mysql -u root -p prime_fit < database/shop_sale_requests.sql
+```
+
+Remplacez `prime_fit` par le nom réel de votre base. Les nouvelles installations utilisent `schema.sql` à jour. Les ventes antérieures à cette mise à jour ne bénéficient pas de cette protection. Le jeton ne protège pas contre deux demandes distinctes (autres onglets, formulaires rouverts ou nouvelles saisies) ; vérifiez la liste des ventes avant de recommencer après une erreur réseau. L’import et les soumissions simultanées restent à tester sur MySQL/Laragon.
 
 ## Équipements et maintenance
 
