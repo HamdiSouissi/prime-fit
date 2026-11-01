@@ -11,6 +11,7 @@ require __DIR__ . '/../app/controllers/AttendanceController.php';
 require __DIR__ . '/../app/controllers/CourseController.php';
 require __DIR__ . '/../app/controllers/CourseEditController.php';
 require __DIR__ . '/../app/controllers/CoachController.php';
+require __DIR__ . '/../app/controllers/CoachProfileController.php';
 require __DIR__ . '/../app/controllers/FitnessController.php';
 require __DIR__ . '/../app/controllers/ShopController.php';
 require __DIR__ . '/../app/controllers/EquipmentController.php';
@@ -57,6 +58,7 @@ try {
     elseif ($page === 'attendance') { if (!isset($_SESSION['user'])) redirect('login'); (new AttendanceController())->index(); }
     elseif ($page === 'course_edit') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseEditController())->index(); }
     elseif ($page === 'courses') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseController())->index(); }
+    elseif ($page === 'coach_profile') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachProfileController())->index(); }
     elseif ($page === 'coaches') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachController())->index(); }
     elseif ($page === 'fitness') { if (!isset($_SESSION['user'])) redirect('login'); (new FitnessController())->index(); }
     elseif (in_array($page, ['shop','shop_receipt'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new ShopController(); if ($page==='shop_receipt') $controller->receipt(); else $controller->index(); }
