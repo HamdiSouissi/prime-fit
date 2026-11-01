@@ -156,6 +156,52 @@
     }
   }
 
+  // Load and play the decorative film only while visible; the poster is the no-JS fallback.
+  const film = document.querySelector('[data-film]');
+  if (film) {
+    const video = film.querySelector('[data-film-video]');
+    const toggle = film.querySelector('[data-film-toggle]');
+    if (video && toggle && video.dataset.src) {
+      let visible = !('IntersectionObserver' in window);
+      let userPaused = false, motionOverride = false, attempt = 0;
+      const updateButton = () => {
+        const stopped = userPaused || (reducedMotion.matches && !motionOverride);
+        toggle.textContent = stopped ? 'LIRE LA VIDÉO ▶' : 'PAUSE VIDÉO Ⅱ';
+        toggle.setAttribute('aria-label', stopped ? 'Lire la vidéo d’arrière-plan' : 'Mettre en pause la vidéo d’arrière-plan');
+      };
+      const sync = () => {
+        const canPlay = visible && !document.hidden && !userPaused && (!reducedMotion.matches || motionOverride);
+        const current = ++attempt;
+        if (!canPlay) { video.pause(); updateButton(); return; }
+        if (!video.getAttribute('src')) video.setAttribute('src', video.dataset.src);
+        updateButton();
+        const failed = () => { if (current === attempt) { userPaused = true; updateButton(); } };
+        try {
+          const result = video.play();
+          if (result && typeof result.catch === 'function') result.catch(failed);
+        } catch (_) { failed(); }
+      };
+      toggle.hidden = false;
+      toggle.addEventListener('click', () => {
+        if (reducedMotion.matches && !motionOverride) { motionOverride = true; userPaused = false; }
+        else userPaused = !userPaused;
+        sync();
+      });
+      video.addEventListener('error', () => { ++attempt; userPaused = true; updateButton(); });
+      document.addEventListener('visibilitychange', sync);
+      const onMotionChange = () => { motionOverride = false; sync(); };
+      if (reducedMotion.addEventListener) reducedMotion.addEventListener('change', onMotionChange);
+      else if (reducedMotion.addListener) reducedMotion.addListener(onMotionChange);
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => { if (entry.target === film) { visible = entry.isIntersecting; sync(); } });
+        }, { threshold: 0.1 });
+        observer.observe(film);
+      }
+      sync();
+    }
+  }
+
   // Native modal supplies focus containment, Escape and focus restoration. Never block without JS.
   const welcome = document.querySelector('.welcome-dialog');
   if (welcome && typeof welcome.showModal === 'function' && !window.location.hash) {

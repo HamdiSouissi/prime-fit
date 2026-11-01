@@ -15,6 +15,7 @@ foreach (['Horizon &lt;Sport&gt;','href="login"','href="#contact"','href="tel:+2
     if ($needle==='assets/landing') continue;
     if (!str_contains($html,$needle)) throw new RuntimeException('Accueil : élément manquant '.$needle);
 }
+if (!str_contains($html, 'data-film-video') || !str_contains($html, 'playsinline') || !str_contains($html, 'data-film-toggle')) throw new RuntimeException('Section vidéo manquante');
 if (substr_count($html, 'class="discipline-media"') !== 12 || !str_contains($html, 'assets/discipline-boxing.jpg')) throw new RuntimeException('Images des disciplines manquantes');
 if (substr_count($html, 'data-hero-message') !== 4 || !str_contains($html, 'hero-slide-four') || !str_contains($html, 'PILATES')) throw new RuntimeException('Bannière ou disciplines incomplètes');
 if (substr_count($html, 'data-carousel role=') !== 2) throw new RuntimeException('Les deux carrousels sont attendus');
