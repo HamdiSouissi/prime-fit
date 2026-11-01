@@ -10,6 +10,22 @@ CREATE TABLE IF NOT EXISTS auth_rate_limits (
   INDEX idx_auth_limit_window (window_started)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS members (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, phone VARCHAR(30), email VARCHAR(190), card_number VARCHAR(50) UNIQUE, qr_token CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL UNIQUE, governorate VARCHAR(80), birth_date DATE, avatar_color VARCHAR(20) DEFAULT 'gold', status ENUM('active','inactive','blacklisted') NOT NULL DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_member_name(last_name,first_name)) ENGINE=InnoDB;
+-- Base existante : sélectionner la base de l'application et effectuer une sauvegarde.
+-- Comptes membres séparés des comptes du personnel. Les invitations stockent une
+-- empreinte, jamais le lien secret lui-même ; NULL signifie qu'aucun lien n'est actif.
+CREATE TABLE IF NOT EXISTS member_portal_accounts (
+  member_id INT UNSIGNED NOT NULL PRIMARY KEY,
+  email VARCHAR(190) NOT NULL,
+  password_hash VARCHAR(255) NULL,
+  invitation_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  invitation_expires_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_portal_email (email),
+  UNIQUE KEY uq_portal_invitation (invitation_hash),
+  FOREIGN KEY (member_id) REFERENCES members(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Sélectionner la base utilisée et sauvegarder avant import.
 CREATE TABLE IF NOT EXISTS marketing_consent_events (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
