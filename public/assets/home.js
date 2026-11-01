@@ -115,12 +115,14 @@
   const hero = document.querySelector('.hero');
   if (hero) {
     const slides = Array.from(hero.querySelectorAll('.hero-slide'));
+    const messages = Array.from(hero.querySelectorAll('[data-hero-message]'));
+    const announcement = hero.querySelector('[data-hero-announcement]');
     const controls = hero.querySelector('[data-hero-controls]');
     const previous = hero.querySelector('[data-hero-prev]');
     const next = hero.querySelector('[data-hero-next]');
     const toggle = hero.querySelector('[data-hero-toggle]');
     const count = hero.querySelector('[data-hero-count]');
-    if (slides.length > 1 && controls && previous && next && toggle && count) {
+    if (slides.length > 1 && messages.length === slides.length && controls && previous && next && toggle && count) {
       controls.hidden = false;
       let index = 0, paused = false, hovering = false, focused = false;
       const updateToggle = () => {
@@ -128,14 +130,17 @@
         toggle.setAttribute('aria-label', paused ? 'Activer le défilement de la bannière' : 'Mettre en pause le défilement de la bannière');
         toggle.innerHTML = paused ? 'LECTURE <span aria-hidden="true">▶</span>' : 'PAUSE <span aria-hidden="true">Ⅱ</span>';
       };
-      const show = nextIndex => {
+      const show = (nextIndex, announce = false) => {
         slides[index].classList.remove('is-active');
+        messages[index].hidden = true;
         index = (nextIndex + slides.length) % slides.length;
         slides[index].classList.add('is-active');
+        messages[index].hidden = false;
+        if (announce && announcement) announcement.textContent = `Diapositive ${index + 1} sur ${slides.length} : ${messages[index].querySelector('h1, h2').textContent.trim()}`;
         count.textContent = `${String(index + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
       };
-      previous.addEventListener('click', () => { paused = true; updateToggle(); show(index - 1); });
-      next.addEventListener('click', () => { paused = true; updateToggle(); show(index + 1); });
+      previous.addEventListener('click', () => { paused = true; updateToggle(); show(index - 1, true); });
+      next.addEventListener('click', () => { paused = true; updateToggle(); show(index + 1, true); });
       toggle.addEventListener('click', () => { paused = !paused; updateToggle(); });
       hero.addEventListener('mouseenter', () => { hovering = true; });
       hero.addEventListener('mouseleave', () => { hovering = false; });
