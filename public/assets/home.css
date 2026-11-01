@@ -21,3 +21,10 @@
 .hero-slide-four{background-image:linear-gradient(90deg,rgba(6,7,7,.93),rgba(6,7,7,.52) 55%,rgba(6,7,7,.18)),linear-gradient(0deg,rgba(6,7,7,.65),transparent 35%),url('photo-strength.jpg');background-position:center 45%}
 .hero-message[hidden]{display:none}.hero-message h2{font-family:var(--display);font-size:clamp(76px,8.5vw,132px);font-weight:900;line-height:.82;letter-spacing:-.025em;margin:26px 0;text-transform:uppercase}.hero-message h2 em{font-style:normal;color:var(--yellow)}.hero-message p{font-size:17px;line-height:1.55;color:#deded8;margin-bottom:28px}.hero-announcement{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 @media(max-width:800px){.hero-message h2{font-size:clamp(65px,12vw,100px)}}@media(max-width:480px){.hero-message h2{font-size:clamp(58px,15vw,78px)}.hero-message p{font-size:15px}}
+
+/* Soft slide transitions and illustrated discipline cards. */
+.hero-slide{transform:scale(1.025);transition:opacity .7s ease,transform 1.1s ease}.hero-slide.is-active{transform:scale(1)}
+.hero-message:not([hidden]){animation:hero-message-enter .6s cubic-bezier(.2,.7,.2,1) both}
+@keyframes hero-message-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.discipline-grid article{padding:0;overflow:hidden;display:flex;flex-direction:column}.discipline-media{aspect-ratio:16/10;overflow:hidden;background:#272727}.discipline-media img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.2,.65,.2,1)}.discipline-grid article:hover .discipline-media img{transform:scale(1.045)}.discipline-content{padding:25px 28px 30px;flex:1}.discipline-grid h3{margin:20px 0 10px}
+@media(prefers-reduced-motion:reduce){.hero-slide,.hero-slide.is-active{transition:none;transform:none}.hero-message:not([hidden]){animation:none}.discipline-grid article:hover .discipline-media img{transform:none}}
