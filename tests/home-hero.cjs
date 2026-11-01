@@ -1,9 +1,9 @@
 const {JSDOM}=require('jsdom');
 const fs=require('fs');
 function make(reduced=false) {
- const dom=new JSDOM(`<section class="hero"><div class="hero-slide is-active"></div><div class="hero-slide"></div><div class="hero-slide"></div><div class="hero-slide"></div><div data-hero-message><h1>Message un</h1></div><div data-hero-message hidden><h2>Message deux</h2></div><div data-hero-message hidden><h2>Message trois</h2></div><div data-hero-message hidden><h2>Message quatre</h2></div><div data-hero-controls hidden><span data-hero-count></span><button data-hero-prev></button><button data-hero-next></button><button data-hero-toggle></button></div><span data-hero-announcement></span></section>`,{url:'https://example.test/',runScripts:'outside-only'});
+ const dom=new JSDOM(`<section class="hero"><div class="hero-slide"></div><div class="hero-slide"></div><div class="hero-slide"></div><div class="hero-slide"></div><div data-hero-message><h1>Message un</h1></div><div data-hero-message hidden><h2>Message deux</h2></div><div data-hero-message hidden><h2>Message trois</h2></div><div data-hero-message hidden><h2>Message quatre</h2></div><div data-hero-controls hidden><span data-hero-count></span><button data-hero-prev></button><button data-hero-next></button><button data-hero-toggle></button></div><span data-hero-announcement></span></section>`,{url:'https://example.test/',runScripts:'outside-only'});
  const w=dom.window, hero=w.document.querySelector('.hero');
- w.matchMedia=()=>({matches:reduced}); w.requestAnimationFrame=()=>{}; w.setInterval=(fn, delay)=>{w.tick=fn; w.intervalDelay=delay;};
+ w.matchMedia=()=>({matches:reduced}); w.requestAnimationFrame=fn=>fn(); w.setInterval=(fn, delay)=>{w.tick=fn; w.intervalDelay=delay;};
  Object.defineProperty(w.document,'hidden',{value:false}); hero.getBoundingClientRect=()=>({top:0,bottom:500});
  w.eval(fs.readFileSync('public/assets/home.js','utf8'));
  return {dom,w,hero,slides:hero.querySelectorAll('.hero-slide'), messages:hero.querySelectorAll('[data-hero-message]')};
@@ -16,3 +16,6 @@ a.hero.querySelector('[data-hero-toggle]').click(); a.w.tick(); check(a,3); a.w.
 let b=make(true); b.w.tick(); check(b,0); if(!b.hero.querySelector('[data-hero-toggle]').hidden) throw Error('Réduction du mouvement');
 b.hero.querySelector('[data-hero-prev]').click(); check(b,3); b.dom.window.close();
 console.log('Accueil : quatre diapositives, navigation et réduction du mouvement OK');
+
+const css=fs.readFileSync('public/assets/home.css','utf8');
+if (!css.includes('transform 3s linear') || !css.includes('.hero-slide:nth-child(even).is-active{transform:scale(1)}')) throw Error('Zoom in/out sur trois secondes absent');

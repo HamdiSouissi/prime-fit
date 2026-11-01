@@ -125,6 +125,10 @@
     if (slides.length > 1 && messages.length === slides.length && controls && previous && next && toggle && count) {
       controls.hidden = false;
       let index = 0, paused = false, hovering = false, focused = false;
+      // Start the first zoom after the initial frame, keeping the still background as a no-JS fallback.
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        if (index === 0) slides[0].classList.add('is-active');
+      }));
       const updateToggle = () => {
         toggle.hidden = reducedMotion.matches;
         toggle.setAttribute('aria-label', paused ? 'Activer le défilement de la bannière' : 'Mettre en pause le défilement de la bannière');
