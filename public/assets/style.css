@@ -550,3 +550,5 @@ footer span:last-child{margin-left:auto}
 /* Direct link to the public website, available throughout the management area. */
 .site-home-link{flex:none;text-decoration:none}.site-home-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:560px){.top-actions{gap:4px}.site-home-link{width:36px;height:40px}}
+/* Accessible account and logout actions in the header. */
+.account-link{text-decoration:none;color:inherit;min-width:0}.account-link:hover .avatar{outline:2px solid var(--accent);outline-offset:2px}.account-link:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.header-logout{margin:0;flex:none}.header-logout button{cursor:pointer}@media(max-width:860px){.top-profile .top-profile-details{display:none}}@media(max-width:560px){.topbar .breadcrumb{display:none}.topbar .top-actions{margin-left:auto}.top-actions .quick-action{display:none}.top-profile{border:0;padding-left:0;margin-left:0}}

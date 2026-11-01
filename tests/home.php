@@ -27,6 +27,7 @@ $db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY,name TEXT,email TEXT,role 
 $_SESSION=['user'=>['id'=>1,'name'=>'Ancien nom'],'auth_fingerprint'=>hash('sha256','stored-hash')];
 ob_start(); (new HomeController())->index(); $connected=ob_get_clean();
 if (!str_contains($connected,'Amine &lt;Test&gt;') || str_contains($connected,'Amine <Test>') || !str_contains($connected,'class="header-dashboard" href="dashbord"') || str_contains($connected,'class="header-login"')) throw new RuntimeException('Accueil connecté incorrect');
+if (!str_contains($connected,'href="account" class="header-account"') || !str_contains($connected,'class="public-logout"') || !str_contains($connected,'method="post" action="logout"') || !str_contains($connected,'class="header-avatar"')) throw new RuntimeException('Compte ou déconnexion du site absents');
 if (substr_count($connected,'href="dashbord"') < 2 || !str_contains($connected,'assets/favicon.svg')) throw new RuntimeException('Liens connecté ou favicon absents');
 $db->exec('UPDATE users SET is_active=0 WHERE id=1'); ob_start(); (new HomeController())->index(); $revoked=ob_get_clean();
 if (isset($_SESSION['user']) || !str_contains($revoked,'class="header-login" href="login"') || str_contains($revoked,'Amine &lt;Test&gt;')) throw new RuntimeException('Session révoquée non vérifiée');

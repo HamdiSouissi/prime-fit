@@ -23,6 +23,7 @@ function gym_brand_markup(): string { return e(gym_name()); }
 function csrf(): string { return 'test'; }
 function dt($v): string { return number_format((float)$v,3,',',' ').' DT'; }
 $_SESSION=['user'=>['name'=>'Coach Test','role'=>'Coach']]; $data=$coach; ob_start(); require __DIR__.'/../app/views/dashboard.php'; $html=ob_get_clean();
+if (!str_contains($html,'class="top-profile account-link" href="account"') || !str_contains($html,'class="header-logout" method="post" action="logout"') || !str_contains($html,'>CT</span>')) throw new RuntimeException('Compte ou déconnexion du header absents');
 if (!str_contains($html,'class="icon-button site-home-link" href="./"') || !str_contains($html,'assets/favicon.svg')) throw new RuntimeException('Icône du site ou favicon absente');
 if (!str_contains($html,'href="./"><i data-lucide="globe"') || !str_contains($html,'Voir le site principal')) throw new RuntimeException('Lien du site principal absent pour le coach');
 if (str_contains($html,'revenueChart') || str_contains($html,'12,345') || str_contains($html,'"values"') || !str_contains($html,'id="planChart"') || str_contains($html,'href="payments"')) throw new RuntimeException('Données financières exposées au coach dans le rendu');

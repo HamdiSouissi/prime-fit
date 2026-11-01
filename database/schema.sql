@@ -1,6 +1,6 @@
 CREATE DATABASE IF NOT EXISTS prime_fit CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE prime_fit;
-CREATE TABLE IF NOT EXISTS users (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL, email VARCHAR(190) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, role ENUM('Admin','Gérant','Réceptionniste','Coach','Comptable') NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS users (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL, email VARCHAR(190) NOT NULL UNIQUE, phone VARCHAR(30) NULL, password_hash VARCHAR(255) NOT NULL, role ENUM('Admin','Gérant','Réceptionniste','Coach','Comptable') NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;
 -- Après sauvegarde, sélectionner la base de l'application avant import.
 -- Table indépendante des comptes et des sessions ; les clés sont des empreintes.
 CREATE TABLE IF NOT EXISTS auth_rate_limits (
