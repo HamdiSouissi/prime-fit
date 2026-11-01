@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../services/CoachSchedule.php';
 class CoachController {
     private function audit(PDO $db, string $action): void {
         $db->prepare('INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, ?, ?)')->execute([$_SESSION['user']['id'], $action, substr($_SERVER['REMOTE_ADDR'] ?? '', 0, 45)]);
@@ -31,9 +32,11 @@ class CoachController {
                     if (!$coach || !$member || !$start || !$end || $end <= $start || $start <= date('Y-m-d H:i:s') || !preg_match('/^\d{1,7}(\.\d{1,3})?$/',$price)) $this->fail('Vérifiez le coach, le membre, les horaires futurs et le prix.');
                     $db->beginTransaction();
                     // Verrouiller toujours coach puis membre pour sérialiser les créations concurrentes.
-                    $stmt=$db->prepare("SELECT u.id,cp.commission_rate FROM users u JOIN coach_profiles cp ON cp.user_id=u.id WHERE u.id=? AND u.role='Coach' AND u.is_active=1 FOR UPDATE"); $stmt->execute([$coach]); $profile=$stmt->fetch(); if (!$profile) $this->fail('Coach introuvable ou inactif.');
+                    $schedule=new CoachSchedule($db); $schedule->lockCoach((int)$coach);
+                    $stmt=$db->prepare('SELECT commission_rate FROM coach_profiles WHERE user_id=? FOR UPDATE'); $stmt->execute([$coach]); $profile=$stmt->fetch(); if (!$profile) $this->fail('Profil coach introuvable.');
                     $stmt=$db->prepare("SELECT id FROM members WHERE id=? AND status='active' FOR UPDATE"); $stmt->execute([$member]); if (!$stmt->fetch()) $this->fail('Membre introuvable ou inactif.');
-                    $stmt=$db->prepare("SELECT id FROM private_sessions WHERE (coach_id=? OR member_id=?) AND status='scheduled' AND starts_at < ? AND ends_at > ? LIMIT 1"); $stmt->execute([$coach,$member,$end,$start]); if ($stmt->fetch()) $this->fail('Le coach ou le membre a déjà une séance privée sur ce créneau.');
+                    $schedule->assertAvailable((int)$coach,$start,$end);
+                    $stmt=$db->prepare("SELECT id FROM private_sessions WHERE member_id=? AND status='scheduled' AND starts_at < ? AND ends_at > ? LIMIT 1"); $stmt->execute([$member,$end,$start]); if ($stmt->fetch()) $this->fail('Le membre a déjà une séance privée sur ce créneau.');
                     $db->prepare('INSERT INTO private_sessions (coach_id,member_id,starts_at,ends_at,price,commission_rate) VALUES (?,?,?,?,?,?)')->execute([$coach,$member,$start,$end,$price,$profile['commission_rate']]);
                     $this->audit($db,'Séance privée créée #'.$db->lastInsertId()); $db->commit(); $_SESSION['flash']='Séance privée planifiée. Aucun paiement n’a été enregistré.';
                 } elseif ($action === 'status') {
@@ -46,7 +49,9 @@ class CoachController {
                 } else $this->fail('Action invalide.');
                 redirect('coaches');
             } catch (DomainException $ex) { if ($db->inTransaction()) $db->rollBack(); $error=$ex->getMessage(); }
-              catch (PDOException $ex) { if ($db->inTransaction()) $db->rollBack(); if ($ex->getCode()==='23000') $error='Cette adresse e-mail est déjà utilisée.'; else throw $ex; }
+              catch (PDOException $ex) { if ($db->inTransaction()) $db->rollBack();
+                  if (($ex->errorInfo[0] ?? '')==='42S02' && (int)($ex->errorInfo[1] ?? 0)===1146 && stripos((string)($ex->errorInfo[2] ?? ''),'courses')!==false) $error='La table des cours est absente. Après sauvegarde, installez le module Cours avant de planifier une séance.';
+                  elseif ($ex->getCode()==='23000') $error='Cette adresse e-mail est déjà utilisée.'; else throw $ex; }
         }
         $onlyOwn=$role==='Coach';
         $sql='SELECT u.id,u.name,u.email,u.is_active,cp.phone,cp.specialties,cp.commission_rate FROM users u JOIN coach_profiles cp ON cp.user_id=u.id WHERE u.role=\'Coach\''.($onlyOwn ? ' AND u.id=?' : '').' ORDER BY u.name';

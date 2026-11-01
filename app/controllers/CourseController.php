@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../services/CoachSchedule.php';
 class CourseController {
     private function canWrite(): bool { return in_array($_SESSION['user']['role'], ['Admin','Gérant','Réceptionniste'], true); }
     private function log(PDO $pdo, string $action): void {
@@ -28,9 +29,11 @@ class CourseController {
                     $pdo->beginTransaction();
                     // Le verrou de salle sérialise les créations et empêche les chevauchements.
                     $stmt=$pdo->prepare('SELECT id FROM rooms WHERE id=? FOR UPDATE'); $stmt->execute([$room]); if (!$stmt->fetch()) $this->fail('Salle introuvable.');
-                    if ($coach) { $stmt=$pdo->prepare("SELECT id FROM users WHERE id=? AND role='Coach' AND is_active=1"); $stmt->execute([$coach]); if (!$stmt->fetch()) $this->fail('Coach introuvable ou inactif.'); }
+                    // Même verrou utilisateur que les séances privées ; salle puis coach.
+                    if ($coach) { $schedule=new CoachSchedule($pdo); $schedule->lockCoach((int)$coach); }
                     elseif (($_POST['coach_id'] ?? '') !== '') $this->fail('Coach invalide.');
                     $stmt=$pdo->prepare("SELECT id FROM courses WHERE room_id=? AND status='scheduled' AND starts_at < ? AND ends_at > ? LIMIT 1"); $stmt->execute([$room,$end,$start]); if ($stmt->fetch()) $this->fail('Cette salle est déjà occupée sur ce créneau.');
+                    if ($coach) $schedule->assertAvailable((int)$coach,$start,$end);
                     $pdo->prepare('INSERT INTO courses (title,room_id,coach_id,starts_at,ends_at,capacity) VALUES (?,?,?,?,?,?)')->execute([$title,$room,$coach ?: null,$start,$end,$capacity]); $this->log($pdo,'Cours créé #'.$pdo->lastInsertId()); $pdo->commit(); $_SESSION['flash']='Cours ajouté au planning.';
                 } elseif (in_array($action,['book','cancel_booking','cancel_course'],true)) {
                     $course=filter_var($_POST['course_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); if (!$course) $this->fail('Cours invalide.');
@@ -62,7 +65,9 @@ class CourseController {
                 } else $this->fail('Action invalide.');
                 redirect(isset($course) && in_array($action, ['book','cancel_booking'], true) ? 'courses&course='.$course : 'courses');
             } catch (DomainException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); $error=$ex->getMessage(); }
-              catch (PDOException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); if ($ex->getCode()==='23000') $error='Cette salle ou réservation existe déjà.'; else throw $ex; }
+              catch (PDOException $ex) { if ($pdo->inTransaction()) $pdo->rollBack();
+                  if (($ex->errorInfo[0] ?? '')==='42S02' && (int)($ex->errorInfo[1] ?? 0)===1146 && stripos((string)($ex->errorInfo[2] ?? ''),'private_sessions')!==false) $error='La table des séances privées est absente. Après sauvegarde, installez le module Coachs avant de programmer un cours avec coach.';
+                  elseif ($ex->getCode()==='23000') $error='Cette salle ou réservation existe déjà.'; else throw $ex; }
         }
         $rooms=db()->query('SELECT * FROM rooms ORDER BY name')->fetchAll();
         $coaches=db()->query("SELECT id,name FROM users WHERE role='Coach' AND is_active=1 ORDER BY name")->fetchAll();
