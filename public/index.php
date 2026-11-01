@@ -70,7 +70,7 @@ try {
     elseif ($page === 'coach_profile') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachProfileController())->index(); }
     elseif ($page === 'coaches') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachController())->index(); }
     elseif ($page === 'fitness') { if (!isset($_SESSION['user'])) redirect('login'); (new FitnessController())->index(); }
-    elseif ($page === 'stock_history') { if (!isset($_SESSION['user'])) redirect('login'); (new StockHistoryController())->index(); }
+    elseif (in_array($page, ['stock_history','stock_history_export'],true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new StockHistoryController(); if ($page==='stock_history_export') $controller->export(); else $controller->index(); }
     elseif (in_array($page, ['shop','shop_receipt'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new ShopController(); if ($page==='shop_receipt') $controller->receipt(); else $controller->index(); }
     elseif (in_array($page, ['equipment','equipment_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new EquipmentController(); if ($page==='equipment_export') $controller->export(); else $controller->index(); }
     elseif (in_array($page, ['finance', 'finance_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new FinanceController(); if ($page === 'finance_export') $controller->export(); else $controller->index(); }

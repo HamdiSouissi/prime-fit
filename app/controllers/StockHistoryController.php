@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../services/StockHistory.php';
+require_once __DIR__.'/../services/StockHistoryCsv.php';
 class StockHistoryController {
     public function index(): void {
         if (!in_array($_SESSION['user']['role'] ?? '',['Admin','Gérant','Réceptionniste','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
@@ -17,4 +18,17 @@ class StockHistoryController {
         }
         header('Cache-Control: private, no-store'); require __DIR__.'/../views/stock_history.php';
     }
+    public function export(): void {
+        if (!in_array($_SESSION['user']['role'] ?? '',['Admin','Gérant','Réceptionniste','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        if ($_SERVER['REQUEST_METHOD']!=='POST') { http_response_code(405); exit('Méthode non autorisée.'); }
+        verify_csrf();
+        $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); if (!$id) { http_response_code(404); exit('Produit introuvable.'); }
+        try { $filters=StockHistory::filters($_POST); } catch (DomainException $ex) { http_response_code(422); exit(e($ex->getMessage())); }
+        $pdo=db(); $service=new StockHistory($pdo); $product=$service->product((int)$id); if (!$product) { http_response_code(404); exit('Produit introuvable.'); }
+        // Journaliser la demande, sans présumer que le téléchargement a abouti.
+        $pdo->prepare('INSERT INTO activity_logs (user_id,action,ip_address) VALUES (?,?,?)')->execute([(int)$_SESSION['user']['id'],'Export des mouvements demandé produit #'.(int)$id,substr($_SERVER['REMOTE_ADDR'] ?? '',0,45)]);
+        header('Content-Type: text/csv; charset=UTF-8'); header('Content-Disposition: attachment; filename="mouvements-stock-'.(int)$id.'.csv"'); header('Cache-Control: private, no-store');
+        $out=fopen('php://output','w'); StockHistoryCsv::write($out,$service,$product,$filters); fclose($out);
+    }
+
 }
