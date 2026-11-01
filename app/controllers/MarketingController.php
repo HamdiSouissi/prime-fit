@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/../services/MarketingConsent.php';
 class MarketingController {
     private function validDate(string $value): bool {
         $date=DateTimeImmutable::createFromFormat('!Y-m-d',$value);
@@ -10,10 +11,8 @@ class MarketingController {
     }
     /** Accepte uniquement les numéros tunisiens à huit chiffres, locaux ou préfixés. */
     public static function whatsapp(?string $phone, string $message): ?string {
-        $number=preg_replace('/[\s().-]+/u','',trim($phone ?? ''));
-        if (preg_match('/^\+?216([0-9]{8})$/D',$number,$matches)) $number='216'.$matches[1];
-        elseif (preg_match('/^[0-9]{8}$/D',$number)) $number='216'.$number;
-        else return null;
+        $number=MarketingConsent::phone($phone);
+        if ($number===null) return null;
         return 'https://wa.me/'.$number.'?text='.rawurlencode($message);
     }
     public function index(): void {
@@ -44,8 +43,30 @@ class MarketingController {
         $total=(int)$pdo->query('SELECT COUNT(*) FROM promotions')->fetchColumn(); $pageNumber=max(1,(int)($_GET['p'] ?? 1)); $pageNumber=min($pageNumber,max(1,(int)ceil($total/10))); $offset=($pageNumber-1)*10;
         $promotions=$pdo->query('SELECT * FROM promotions ORDER BY created_at DESC,id DESC LIMIT 10 OFFSET '.$offset)->fetchAll();
         // Les listes sont volontairement limitées ; aucun message n'est envoyé automatiquement.
-        $birthdays=$pdo->query("SELECT id,first_name,last_name,phone,birth_date FROM members WHERE status='active' AND MONTH(birth_date)=MONTH(CURDATE()) ORDER BY DAY(birth_date),last_name,first_name LIMIT 100")->fetchAll();
-        $expiring=$pdo->query("SELECT m.first_name,m.last_name,m.phone,s.end_date,p.name AS plan FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id WHERE m.status='active' AND s.status='active' AND s.end_date BETWEEN CURDATE() AND CURDATE()+INTERVAL 7 DAY ORDER BY s.end_date,m.last_name LIMIT 100")->fetchAll();
+        $birthdays=$pdo->query("SELECT m.id,m.first_name,m.last_name,m.phone,m.birth_date FROM members m JOIN marketing_consent_events c ON c.id=(SELECT MAX(x.id) FROM marketing_consent_events x WHERE x.member_id=m.id) WHERE m.status='active' AND c.decision='accepted' AND BINARY c.phone_value=BINARY m.phone AND MONTH(m.birth_date)=MONTH(CURDATE()) ORDER BY DAY(m.birth_date),m.last_name,m.first_name LIMIT 100")->fetchAll();
+        $expiring=$pdo->query("SELECT s.id AS subscription_id,m.first_name,m.last_name,m.phone,s.end_date,p.name AS plan FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id JOIN marketing_consent_events c ON c.id=(SELECT MAX(x.id) FROM marketing_consent_events x WHERE x.member_id=m.id) WHERE m.status='active' AND s.status='active' AND c.decision='accepted' AND BINARY c.phone_value=BINARY m.phone AND s.end_date BETWEEN CURDATE() AND CURDATE()+INTERVAL 7 DAY ORDER BY s.end_date,m.last_name LIMIT 100")->fetchAll();
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/marketing.php';
     }
+    /** Vérifie à nouveau l'autorisation et les critères au moment d'ouvrir WhatsApp. */
+    public function whatsappRedirect(): void {
+        if (!in_array($_SESSION['user']['role'],['Admin','Gérant','Réceptionniste'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        $kind=$_GET['kind'] ?? ''; $id=filter_var($_GET['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!is_string($kind) || !in_array($kind,['birthday','expiry'],true) || !$id) { http_response_code(404); exit('Contact introuvable.'); }
+        $link=$this->resolveWhatsapp((int)$id,$kind);
+        if ($link===null) { http_response_code(409); exit('Ce contact n’est plus disponible ou autorisé. Actualisez la page marketing.'); }
+        header('Cache-Control: no-store'); header('Referrer-Policy: no-referrer'); header('Location: '.$link, true, 302); exit;
+    }
+
+    public function resolveWhatsapp(int $id,string $kind): ?string {
+        if (!in_array($kind,['birthday','expiry'],true) || $id<1) return null;
+        $base=" JOIN marketing_consent_events c ON c.id=(SELECT MAX(x.id) FROM marketing_consent_events x WHERE x.member_id=m.id) WHERE m.status='active' AND c.decision='accepted' AND BINARY c.phone_value=BINARY m.phone";
+        if ($kind==='birthday') $sql="SELECT m.first_name,m.phone,m.birth_date,c.phone_value FROM members m".$base." AND m.id=? AND MONTH(m.birth_date)=MONTH(CURDATE())";
+        else $sql="SELECT m.first_name,m.phone,s.end_date,p.name AS plan,c.phone_value FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id".$base." AND s.id=? AND s.status='active' AND s.end_date BETWEEN CURDATE() AND CURDATE()+INTERVAL 7 DAY";
+        $stmt=db()->prepare($sql); $stmt->execute([$id]); $row=$stmt->fetch();
+        if (!$row || (string)$row['phone']!==(string)$row['phone_value']) return null;
+        $message=$kind==='birthday' ? 'Bonjour '.$row['first_name'].', toute l’équipe '.gym_name().' vous souhaite un joyeux anniversaire !' : 'Bonjour '.$row['first_name'].', votre abonnement '.$row['plan'].' chez '.gym_name().' expire le '.date('d/m/Y',strtotime($row['end_date'])).'. Contactez-nous pour le renouveler.';
+        return self::whatsapp($row['phone'],$message);
+
+    }
+
 }

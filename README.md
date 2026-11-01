@@ -103,7 +103,7 @@ Cette synthèse est un suivi de trésorerie simplifié, **pas un bilan comptable
 
 Admin et Gérant peuvent créer, activer ou désactiver des codes promotionnels en pourcentage. La Réception peut consulter le catalogue et préparer les relances. Les codes sont **informatifs uniquement** : ils ne sont ni appliqués ni vérifiés lors de la création d'un abonnement ou d'un paiement. Aucun suivi d'utilisation, plafond ou parrainage n'est encore disponible.
 
-Les anniversaires du mois et abonnements expirant sous sept jours sont affichés pour les membres actifs, jusqu'à 100 lignes par liste. Un numéro tunisien de 8 chiffres, avec ou sans indicatif +216, permet d'ouvrir WhatsApp avec un message prérempli ; le membre du personnel vérifie et envoie lui-même le message. Il n'y a aucun envoi automatique, SMS, historique de contact ni contrôle de consentement dans l'application. Vérifiez les autorisations et préférences de communication avant toute relance ; les membres inactifs ou blacklistés ne figurent pas dans ces listes.
+Les anniversaires du mois et abonnements expirant sous sept jours sont affichés uniquement pour les membres actifs ayant une autorisation WhatsApp marketing enregistrée pour leur numéro actuel, jusqu'à 100 lignes par liste. Un numéro tunisien de 8 chiffres, avec ou sans indicatif +216, permet d'ouvrir WhatsApp avec un message prérempli ; le membre du personnel vérifie et envoie lui-même le message. L'autorisation est revérifiée au clic. Aucun envoi automatique, SMS ni historique d'envoi n'est disponible. Voir les limites et la migration ci-dessous.
 
 ## Cartes QR et pointage par caméra
 
@@ -292,3 +292,19 @@ Admin, Gérant ou Comptable peut ouvrir le reçu d'un paiement d'abonnement et e
 Le paiement original reste visible. Le reçu affiché ultérieurement montre les remboursements et leurs motifs ; un reçu déjà imprimé ou transmis n'est pas mis à jour. Le remboursement diminue le montant net payé et **augmente le solde dû de l'abonnement** ; il ne modifie pas son statut ni son prix. Une annulation ou une remise commerciale doit être traitée séparément. La caisse affiche le brut, les remboursements et le net du jour ; les ventilations par moyen restent brutes. La liste des remboursements du jour affiche les 100 derniers, mais les totaux incluent tous les enregistrements du jour. Le tableau de bord, la trésorerie et les rapports déduisent les remboursements **à la date de leur enregistrement**, qui peut différer de celle du paiement ; leur net peut donc être négatif. Les montants historiques ne reconstituent pas d'éventuels remboursements effectués avant l'installation de cette fonctionnalité.
 
 Les remboursements de boutique et de séances privées, la modification du moyen de remboursement, l'annulation d'une écriture erronée, le rapprochement bancaire et la facturation fiscale restent à développer. Vérifiez la cohérence des fuseaux PHP/MySQL ; les verrous concurrents et la migration doivent encore être testés sur MySQL/Laragon avant utilisation réelle.
+
+### Préférences de contact WhatsApp marketing
+
+Sur une base existante, sauvegardez puis sélectionnez la base utilisée pour importer la nouvelle table :
+
+```bash
+mysql -u root -p prime_fit < database/marketing_consent.sql
+```
+
+Remplacez `prime_fit` si nécessaire. Une nouvelle installation avec `schema.sql` dispose déjà de la table. Sur une base existante, installez la migration avant d'utiliser la nouvelle version : elle est requise pour le marketing et pour modifier le téléphone d'un membre.
+
+Dans **Membres → Voir la fiche → Préférences WhatsApp**, Admin, Gérant et Réceptionniste peuvent enregistrer une autorisation explicite, un refus ou un retrait. La provenance de l'autorisation est obligatoire ; conservez séparément le justificatif et ne saisissez pas de données sensibles dans ce champ. Les nouveaux membres et les membres déjà présents sans décision enregistrée sont considérés comme **non autorisés** : aucune autorisation n'est déduite de leur ancienneté.
+
+Le dernier état est vérifié pour les listes d'anniversaires et de relances, puis à nouveau au clic avant l'ouverture de WhatsApp. La modification du téléphone dans l'application invalide automatiquement la préférence, même si l'ancien numéro est rétabli ensuite ; une nouvelle autorisation doit être recueillie. Les modifications concurrentes de la préférence ou du numéro invalident les formulaires obsolètes. Le retrait est enregistré immédiatement mais ne peut pas reprendre un message déjà ouvert ou envoyé : vérifiez à nouveau avant l'envoi. Cette fonctionnalité n'empêche pas des communications manuelles hors application et ne valide pas l'identité du destinataire.
+
+L'historique conserve le numéro, la provenance, la date et l'auteur des changements : protégez ces données et définissez une durée de conservation. Un état enregistré par le personnel ne prouve pas à lui seul que le consentement respecte les exigences légales ; faites valider vos pratiques et vos justificatifs. L'autorisation est limitée au canal WhatsApp marketing dans ce module ; elle ne couvre ni SMS ni e-mail marketing. L'e-mail transactionnel de carte QR reste indépendant. Il n'y a aucun envoi automatique ni suivi de livraison. Les modifications directes en base contournent le mécanisme et doivent être contrôlées. La migration et les verrous concurrents restent à tester sous MySQL/Laragon.

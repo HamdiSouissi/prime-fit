@@ -6,7 +6,8 @@ function gym_name(): string { return 'Horizon Sportif de Bir El Hafey'; }
 function verify_csrf(): void {}
 function redirect(string $route): void { throw new TestRedirect($route); }
 function db(): PDO { global $pdo; return $pdo; }
-$pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+class MemberTestPDO extends PDO { public function prepare(string $sql,array $options=[]): PDOStatement|false { return parent::prepare(str_replace(' FOR UPDATE','',$sql),$options); } }
+$pdo = new MemberTestPDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
 $pdo->exec('CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, first_name TEXT, last_name TEXT, phone TEXT, email TEXT, card_number TEXT UNIQUE, governorate TEXT, birth_date TEXT, status TEXT, qr_token TEXT UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
 $pdo->exec('CREATE TABLE activity_logs (user_id INTEGER, action TEXT, ip_address TEXT)');
 require __DIR__.'/../app/controllers/ManagementController.php';
@@ -26,6 +27,13 @@ try { $controller->members(); throw new RuntimeException('Redirection attendue')
 }
 $updated=$pdo->query('SELECT * FROM members WHERE id=1')->fetch();
 if ($updated['card_number']!==$members[0]['card_number'] || $updated['qr_token']!==$members[0]['qr_token'] || $updated['first_name']!=='Modifié') throw new RuntimeException('Modification non autorisée du numéro ou du QR');
+$pdo->exec("CREATE TABLE marketing_consent_events (id INTEGER PRIMARY KEY,member_id INTEGER,decision TEXT,phone_value TEXT,evidence TEXT,created_by INTEGER)");
+$_POST=['id'=>'1','first_name'=>'Modifié','last_name'=>'Membre','phone'=>'12345678','status'=>'active'];
+try { $controller->members(); throw new RuntimeException('Redirection attendue'); } catch (TestRedirect $redirect) {}
+$pdo->exec("INSERT INTO marketing_consent_events (member_id,decision,phone_value,evidence,created_by) VALUES (1,'accepted','12345678','Formulaire signé',1)");
+$_POST['phone']='98765432';
+try { $controller->members(); throw new RuntimeException('Redirection attendue'); } catch (TestRedirect $redirect) {}
+if ($pdo->query('SELECT decision FROM marketing_consent_events WHERE member_id=1 ORDER BY id DESC LIMIT 1')->fetchColumn()!=='invalidated' || $pdo->query('SELECT phone FROM members WHERE id=1')->fetchColumn()!=='98765432') throw new RuntimeException('Numéro non invalidé transactionnellement');
 echo "Création et modification des numéros de carte : OK\n";
 // Vérification du diagnostic sans divulguer le message SQL à l'utilisateur.
 $missing = new PDOException('Unknown column');

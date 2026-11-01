@@ -15,6 +15,7 @@ require __DIR__ . '/../app/controllers/ShopController.php';
 require __DIR__ . '/../app/controllers/EquipmentController.php';
 require __DIR__ . '/../app/controllers/FinanceController.php';
 require __DIR__ . '/../app/controllers/MarketingController.php';
+require __DIR__ . '/../app/controllers/MarketingConsentController.php';
 require __DIR__ . '/../app/controllers/ReportController.php';
 require __DIR__ . '/../app/controllers/SettingsController.php';
 require __DIR__ . '/../app/controllers/SubscriptionPriceController.php';
@@ -55,6 +56,8 @@ try {
     elseif ($page === 'shop') { if (!isset($_SESSION['user'])) redirect('login'); (new ShopController())->index(); }
     elseif (in_array($page, ['equipment','equipment_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new EquipmentController(); if ($page==='equipment_export') $controller->export(); else $controller->index(); }
     elseif (in_array($page, ['finance', 'finance_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new FinanceController(); if ($page === 'finance_export') $controller->export(); else $controller->index(); }
+    elseif ($page === 'marketing_consent') { if (!isset($_SESSION['user'])) redirect('login'); (new MarketingConsentController())->index(); }
+    elseif ($page === 'marketing_whatsapp') { if (!isset($_SESSION['user'])) redirect('login'); (new MarketingController())->whatsappRedirect(); }
     elseif ($page === 'marketing') { if (!isset($_SESSION['user'])) redirect('login'); (new MarketingController())->index(); }
     elseif (in_array($page, ['reports', 'reports_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new ReportController(); if ($page === 'reports_export') $controller->export(); else $controller->index(); }
     elseif ($page === 'settings') { if (!isset($_SESSION['user'])) redirect('login'); (new SettingsController())->index(); }
@@ -71,6 +74,8 @@ try {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_freezes.sql dans la base utilisée.';
     } elseif ($page === 'settings' && ($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'gym_name') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_name.sql dans la base utilisée, puis réessayez.';
+    } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'marketing_consent_events') !== false) {
+        echo 'La base doit être mise à jour : après sauvegarde, importez database/marketing_consent.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'payment_refunds') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/payment_refunds.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'agreed_price') !== false) {

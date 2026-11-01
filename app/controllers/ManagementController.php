@@ -3,6 +3,7 @@ require_once __DIR__ . '/../services/MemberCardMailer.php';
 require_once __DIR__ . '/../services/SubscriptionService.php';
 require_once __DIR__ . '/../services/MemberProfile.php';
 require_once __DIR__ . '/../services/SubscriptionLookup.php';
+require_once __DIR__ . '/../services/MarketingConsent.php';
 class ManagementController {
     public static function missingQrColumn(PDOException $ex): bool {
         $info = $ex->errorInfo ?? [];
@@ -41,8 +42,15 @@ class ManagementController {
             } else {
                 try {
                     if ($id) {
-                        $stmt = db()->prepare('UPDATE members SET first_name=?, last_name=?, phone=?, email=?, governorate=?, birth_date=?, status=? WHERE id=?');
-                        $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$governorate ?: null,$birth ?: null,$status,$id]);
+                        $pdo=db(); $pdo->beginTransaction();
+                        try {
+                            $stmt=$pdo->prepare('SELECT phone FROM members WHERE id=? FOR UPDATE'); $stmt->execute([$id]); $existing=$stmt->fetch();
+                            if (!$existing) throw new DomainException('Membre introuvable.');
+                            (new MarketingConsent($pdo,(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? ''))->revokeForPhoneChange((int)$id,$existing['phone'],$phone ?: null);
+                            $stmt=$pdo->prepare('UPDATE members SET first_name=?, last_name=?, phone=?, email=?, governorate=?, birth_date=?, status=? WHERE id=?');
+                            $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$governorate ?: null,$birth ?: null,$status,$id]);
+                            $this->log('Fiche membre enregistrée #'.$id); $pdo->commit();
+                        } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
                     } else {
                         $pdo = db(); $pdo->beginTransaction();
                         try {
@@ -69,7 +77,8 @@ class ManagementController {
                         $mailMessage = $this->sendCardEmail(['first_name'=>$first, 'last_name'=>$last, 'email'=>$email, 'card_number'=>$card, 'qr_token'=>$qrToken, 'created_at'=>$createdAt]);
                         $this->flash('Membre créé. ' . $mailMessage); redirect('member_card&id='.$id);
                     }
-                    $this->log('Fiche membre enregistrée #'.$id); $this->flash('Fiche membre enregistrée.'); redirect('members');
+                    $this->flash('Fiche membre enregistrée.'); redirect('members');
+                } catch (DomainException $ex) { $error=$ex->getMessage();
                 } catch (PDOException $ex) {
                     if (self::missingQrColumn($ex)) {
                         error_log('Migration QR manquante : ' . $ex->getMessage());
