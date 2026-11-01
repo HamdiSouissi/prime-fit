@@ -22,6 +22,7 @@ $__items = [
     ['marketing','marketing','megaphone','Marketing',['Admin','Gérant','Réceptionniste']],
     ['reports','reports','chart-no-axes-combined','Rapports',['Admin','Gérant','Comptable']],
     ['settings','settings','settings-2','Paramètres',['Admin','Gérant','Comptable']],
+    ['users','users','users-round','Comptes du personnel',['Admin']],
     ['activity','activity','clipboard-list','Journal d’activité',['Admin']],
     ['account','account','shield-check','Mon compte',null],
 ];
