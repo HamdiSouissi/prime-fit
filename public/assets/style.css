@@ -547,3 +547,6 @@ footer span:last-child{margin-left:auto}
 @media(max-width:480px){.notice,.error{padding:14px;gap:10px}.prime-popup-inner{padding:22px}.prime-popup h2{font-size:26px}}
 @media(prefers-reduced-motion:reduce){.notice,.error{animation:none}}
 .notice[hidden],.error[hidden]{display:none!important}
+/* Direct link to the public website, available throughout the management area. */
+.site-home-link{flex:none;text-decoration:none}.site-home-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:560px){.top-actions{gap:4px}.site-home-link{width:36px;height:40px}}

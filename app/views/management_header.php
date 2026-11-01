@@ -28,7 +28,7 @@ $__items = [
 ];
 $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
 ?>
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#000000"><title><?= e($title) ?> — <?= e(gym_name()) ?></title>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#000000"><title><?= e($title) ?> — <?= e(gym_name()) ?></title><link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <script>try{var d=document.documentElement;if(localStorage.getItem('prime-theme')==='light')d.classList.add('light');if(localStorage.getItem('prime-compact')==='1')d.classList.add('compact');}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/style.css"><script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script><?php if ($__needsCharts): ?><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script><?php endif; ?><script src="assets/notifications.js" defer></script><script src="assets/app.js" defer></script></head><body data-app-name="<?= e(gym_name()) ?>"<?= !empty($bodyClass) ? ' class="'.e($bodyClass).'"' : '' ?>>
 <a class="skip-link" href="#main">Aller au contenu</a>
@@ -47,6 +47,7 @@ $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
 <?php if (in_array($__role, ['Admin','Gérant','Réceptionniste','Comptable'], true)): ?><a class="quick-action" href="payments"><i data-lucide="plus"></i><span>Paiement</span></a><?php endif; ?>
 <?php if (in_array($__role, ['Admin','Gérant','Réceptionniste'], true)): ?><a class="quick-action" href="attendance"><i data-lucide="scan-line"></i><span>Pointage</span></a><?php endif; ?>
 <?php if (isset($data['expiring']) && in_array($__role, ['Admin','Gérant','Réceptionniste'], true)): ?><a class="notification" href="marketing" title="<?= (int)$data['expiring'] ?> abonnement(s) expirent bientôt" aria-label="<?= (int)$data['expiring'] ?> abonnement(s) expirent bientôt"><i data-lucide="bell"></i><?php if ($data['expiring']): ?><b></b><?php endif; ?></a><?php endif; ?>
+<a class="icon-button site-home-link" href="./" title="Voir le site principal" aria-label="Voir le site principal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"></path></svg></a>
 <button class="icon-button" id="themeToggle" aria-label="Changer de thème"><i data-lucide="sun" class="i-sun"></i><i data-lucide="moon" class="i-moon"></i></button>
 <div class="top-profile"><div class="avatar gold"><?= e(mb_substr($__name,0,1)) ?></div><div><strong><?= e($__name) ?></strong><small><?= e($__role) ?></small></div></div></div></header>
 <main class="content" id="main">

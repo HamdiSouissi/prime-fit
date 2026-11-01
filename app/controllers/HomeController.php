@@ -6,6 +6,25 @@ require_once __DIR__.'/../services/ContactRateLimiter.php';
 class HomeController {
     public function index(): void {
         if (!in_array($_SERVER['REQUEST_METHOD'] ?? 'GET',['GET','HEAD','POST'],true)) { http_response_code(405); header('Allow: GET, HEAD, POST'); exit('Méthode non autorisée.'); }
+        // Never expose a cached name or a session revoked since login on the public page.
+        header('Cache-Control: private, no-store');
+        $homeUserName=null;
+        if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+            try {
+                $stmt=db()->prepare('SELECT id,name,email,role,is_active,password_hash FROM users WHERE id=?');
+                $stmt->execute([(int)($_SESSION['user']['id'] ?? 0)]);
+                $user=$stmt->fetch(); $fingerprint=$_SESSION['auth_fingerprint'] ?? '';
+                if ($user && !empty($user['is_active']) && is_string($fingerprint) && hash_equals(hash('sha256',(string)$user['password_hash']),$fingerprint)) {
+                    unset($user['password_hash']); $_SESSION['user']=$user;
+                    $homeUserName=is_string($user['name'] ?? null) && trim($user['name'])!=='' ? $user['name'] : 'Mon compte';
+                } else {
+                    unset($_SESSION['user'],$_SESSION['auth_fingerprint']);
+                }
+            } catch (PDOException $ex) {
+                // The site remains public if the account store is temporarily unavailable.
+                error_log('Vérification de la session du site indisponible.');
+            }
+        }
         $contact=['phone'=>'','email'=>'','address'=>'','opening_hours'=>''];
         try {
             $row=db()->query('SELECT phone,email,address,opening_hours FROM gym_settings WHERE id=1')->fetch();

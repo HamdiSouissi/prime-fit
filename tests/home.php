@@ -23,6 +23,17 @@ if (substr_count($html, 'data-hero-message') !== 4 || !str_contains($html, 'hero
 if (substr_count($html, 'data-carousel role=') !== 2) throw new RuntimeException('Les deux carrousels sont attendus');
 if (str_contains($html,'Cours annulé') || str_contains($html,'Cours passé') || str_contains($html,'Yoga <doux>')) throw new RuntimeException('Cours publics incorrects');
 if (str_contains($html,'<Rue>') || str_contains($html,'<Sport>') || str_contains($html,'19€') || str_contains($html,'page=login')) throw new RuntimeException('Contenu ou échappement incorrect');
+$db->exec("CREATE TABLE users (id INTEGER PRIMARY KEY,name TEXT,email TEXT,role TEXT,is_active INTEGER,password_hash TEXT); INSERT INTO users VALUES (1,'Amine <Test>','user@example.tn','Coach',1,'stored-hash')");
+$_SESSION=['user'=>['id'=>1,'name'=>'Ancien nom'],'auth_fingerprint'=>hash('sha256','stored-hash')];
+ob_start(); (new HomeController())->index(); $connected=ob_get_clean();
+if (!str_contains($connected,'Amine &lt;Test&gt;') || str_contains($connected,'Amine <Test>') || !str_contains($connected,'class="header-dashboard" href="dashbord"') || str_contains($connected,'class="header-login"')) throw new RuntimeException('Accueil connecté incorrect');
+if (substr_count($connected,'href="dashbord"') < 2 || !str_contains($connected,'assets/favicon.svg')) throw new RuntimeException('Liens connecté ou favicon absents');
+$db->exec('UPDATE users SET is_active=0 WHERE id=1'); ob_start(); (new HomeController())->index(); $revoked=ob_get_clean();
+if (isset($_SESSION['user']) || !str_contains($revoked,'class="header-login" href="login"') || str_contains($revoked,'Amine &lt;Test&gt;')) throw new RuntimeException('Session révoquée non vérifiée');
+$db->exec('UPDATE users SET is_active=1 WHERE id=1');
+$_SESSION=['user'=>['id'=>1],'auth_fingerprint'=>hash('sha256','old-password')]; ob_start(); (new HomeController())->index(); $expired=ob_get_clean();
+if (isset($_SESSION['user']) || !str_contains($expired,'class="header-login" href="login"')) throw new RuntimeException('Mot de passe modifié non détecté');
+$_SESSION=[];
 $db->exec("UPDATE gym_settings SET phone='javascript:alert(1)',email='evil?subject=bad@example.tn'"); ob_start(); (new HomeController())->index(); $html=ob_get_clean(); if (str_contains($html,'href="tel:javascript') || str_contains($html,'href="mailto:evil?subject=bad')) throw new RuntimeException('Coordonnées non sécurisées');
 $db->exec('DELETE FROM gym_settings'); ob_start(); (new HomeController())->index(); $html=ob_get_clean();
 if (!str_contains($html,'Les coordonnées du club seront bientôt disponibles.') || str_contains($html,'href="tel:')) throw new RuntimeException('Coordonnées absentes incorrectes');
