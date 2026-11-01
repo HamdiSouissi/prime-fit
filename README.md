@@ -129,6 +129,12 @@ mysql -u root -p prime_fit < database/shop_sale_requests.sql
 
 Remplacez `prime_fit` par le nom réel de votre base. Les nouvelles installations utilisent `schema.sql` à jour. Les ventes antérieures à cette mise à jour ne bénéficient pas de cette protection. Le jeton ne protège pas contre deux demandes distinctes (autres onglets, formulaires rouverts ou nouvelles saisies) ; vérifiez la liste des ventes avant de recommencer après une erreur réseau. L’import et les soumissions simultanées restent à tester sur MySQL/Laragon.
 
+### Historique complet des stocks
+
+Depuis **Boutique → Détails → Voir tout l’historique et filtrer**, Admin, Gérant, Réceptionniste et Comptable peuvent parcourir tous les mouvements d’un produit, 20 par page, et filtrer par dates inclusives et type (stock initial, réapprovisionnement, vente ou correction). Un mouvement de vente donne accès au reçu correspondant. Les Coachs n’ont pas accès à cette rubrique, y compris par lien direct. Le détail produit conserve son aperçu des 100 derniers mouvements.
+
+Le nom et la référence du produit, son stock et les noms des auteurs sont les valeurs actuelles ; l’historique ne reconstitue pas les mouvements antérieurs à leur enregistrement. Les résultats et pages peuvent évoluer si des mouvements sont ajoutés pendant la consultation. Aucun export n’est proposé. Aucune migration supplémentaire n’est nécessaire si le module Boutique et `shop_inventory.sql` sont déjà installés ; vérifiez le fonctionnement sur votre MySQL/Laragon.
+
 ## Équipements et maintenance
 
 Admin et Gérant peuvent créer des équipements et enregistrer une panne, un entretien ou une réparation, en choisissant explicitement le nouveau statut et la prochaine échéance. L'inventaire permet la recherche et signale les appareils hors service, en maintenance ou dont l'échéance est passée ou dans les sept jours. Tous les rôles peuvent le consulter ; les coûts sont visibles seulement par Admin, Gérant et Comptable. Les actions sont journalisées. Une intervention peut être datée au plus tard du jour courant ; l'échéance peut être passée pour signaler un retard.
