@@ -2,7 +2,7 @@
 declare(strict_types=1);
 $db=new PDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
 $db->exec("CREATE TABLE gym_settings (id INTEGER PRIMARY KEY,phone TEXT,email TEXT,address TEXT,opening_hours TEXT); INSERT INTO gym_settings VALUES (1,'+216 12 345 678','contact@example.tn','<Rue> test','Lundi 08h–20h\nMardi 08h–20h')");
-function db(): PDO { global $db; return $db; } function e($v): string { return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); } function gym_name(): string { return 'Horizon <Sport>'; }
+function db(): PDO { global $db; return $db; } function e($v): string { return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8'); } function gym_name(): string { return 'Horizon <Sport>'; } function csrf(): string { return 'test-token'; }
 $db->exec("CREATE TABLE courses (id INTEGER PRIMARY KEY, title TEXT, starts_at TEXT, status TEXT)");
 $stmt=$db->prepare('INSERT INTO courses (title,starts_at,status) VALUES (?,?,?)');
 $stmt->execute(['Yoga <doux>',date('Y-m-d H:i:s',time()+86400),'scheduled']);
@@ -15,6 +15,7 @@ foreach (['Horizon &lt;Sport&gt;','href="login"','href="#contact"','href="tel:+2
     if ($needle==='assets/landing') continue;
     if (!str_contains($html,$needle)) throw new RuntimeException('Accueil : élément manquant '.$needle);
 }
+if (!str_contains($html, 'id="contact-form"') || !str_contains($html, 'name="csrf"') || !str_contains($html, 'name="message"')) throw new RuntimeException('Formulaire de contact manquant');
 if (strpos($html, 'class="manifesto"') > strpos($html, 'class="film-section"')) throw new RuntimeException('Ordre du bloc manifeste incorrect');
 if (!str_contains($html, 'data-film-video') || !str_contains($html, 'playsinline') || str_contains($html, 'data-film-toggle')) throw new RuntimeException('Section vidéo manquante');
 if (substr_count($html, 'class="discipline-media"') !== 12 || !str_contains($html, 'assets/discipline-boxing.jpg')) throw new RuntimeException('Images des disciplines manquantes');
