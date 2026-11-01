@@ -9,7 +9,7 @@ function make(reduced=false) {
  return {dom,w,hero,slides:hero.querySelectorAll('.hero-slide'), messages:hero.querySelectorAll('[data-hero-message]')};
 }
 const check=(a,index)=>{for(let i=0;i<4;i++) if(a.slides[i].classList.contains('is-active')!==(i===index) || a.messages[i].hidden===(i===index)) throw Error('Image et message désynchronisés : '+index);};
-let a=make(); if(a.w.intervalDelay !== 2000) throw Error('La bannière doit défiler toutes les deux secondes'); if(a.hero.querySelector('[data-hero-controls]').hidden) throw Error('Commandes absentes'); check(a,0);
+let a=make(); if(a.w.intervalDelay !== 3000) throw Error('La bannière doit défiler toutes les trois secondes'); if(a.hero.querySelector('[data-hero-controls]').hidden) throw Error('Commandes absentes'); check(a,0);
 a.w.tick(); check(a,1);
 a.hero.querySelector('[data-hero-next]').click(); a.w.tick(); check(a,2); if(!a.hero.querySelector('[data-hero-announcement]').textContent.includes('Message trois')) throw Error('Annonce absente');
 a.hero.querySelector('[data-hero-toggle]').click(); a.w.tick(); check(a,3); a.w.tick(); check(a,0); a.dom.window.close();
