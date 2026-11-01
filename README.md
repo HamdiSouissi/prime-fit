@@ -83,7 +83,21 @@ Ces données sont sensibles : avant usage réel, définir les autorisations, la 
 
 Admin et Gérant peuvent créer des produits et les réapprovisionner. Admin, Gérant et Réceptionniste peuvent enregistrer une vente simple ; Comptable dispose d'un accès en lecture seule. Une vente concerne un produit et une quantité, et fige le prix et le moyen de paiement. Le stock est vérifié sous verrou puis mis à jour dans la même transaction que la vente et son mouvement de stock. Les produits dont le stock atteint le seuil configuré sont signalés.
 
-Les ventes boutique sont séparées des paiements d'abonnement : elles ne figurent pas encore dans la caisse des abonnements ni dans les chiffres du tableau de bord. Le panier multi-produits, les annulations/remboursements, les reçus boutique et le calcul de TVA/timbre restent à développer. Les montants et quantités sont limités par les champs SQL et les validations ; ce module nécessite des tests PHP/MySQL avant toute utilisation réelle.
+Les ventes boutique sont séparées des paiements d'abonnement : elles ne figurent pas encore dans la caisse des abonnements ni dans les chiffres du tableau de bord. Le panier multi-produits, les annulations/remboursements et le calcul de TVA/timbre restent à développer. Les montants et quantités sont limités par les champs SQL et les validations ; ce module nécessite des tests PHP/MySQL avant toute utilisation réelle.
+
+### Reçus de vente boutique
+
+Après une vente, le reçu s’ouvre et peut être imprimé ou enregistré en PDF via le navigateur. Retrouvez-le aussi depuis **Boutique → Ventes boutique**, en choisissant la date de la vente. Admin, Gérant, Réceptionniste et Comptable peuvent consulter les reçus ; les Coachs n’y ont pas accès. Le document est un justificatif de vente, **pas une facture fiscale** : TVA et timbre ne sont pas calculés et le moyen de paiement déclaré ne prouve pas un règlement bancaire. Il ne crée ni paiement supplémentaire, ni remboursement, ni transfert.
+
+Les nouvelles ventes figent le nom et la référence du produit, ainsi que le prix unitaire et le total. Pour les ventes précédentes, le nom et la référence d’origine ne sont pas connus : le reçu affiche les valeurs actuelles du catalogue avec un avertissement. Le nom et les coordonnées de la salle sont les valeurs actuelles. Un reçu déjà imprimé ne change pas ; il n’y a pas de reçu archivé immuable. Aucun client n’est associé aux ventes boutique. Le formulaire de vente ne dispose pas encore de protection anti-doublon : en cas d’incertitude après une erreur réseau, vérifiez la liste des ventes avant de recommencer.
+
+Pour une base existante, après sauvegarde, importer une seule fois (remplacez `prime_fit` par votre base) :
+
+```sh
+mysql -u root -p prime_fit < database/shop_sale_receipts.sql
+```
+
+Les nouvelles installations utilisent `schema.sql` à jour ; la création de nouvelles tables via `shop.sql` inclut également ces colonnes, mais ce fichier ne modifie pas une table existante. Si les colonnes existent déjà, ne réimportez pas cette migration. Les ventes existantes ne sont pas modifiées. L’import et les verrous restent à tester sur MySQL/Laragon.
 
 ## Équipements et maintenance
 
@@ -179,7 +193,7 @@ mysql -u root -p prime_fit < database/shop_inventory.sql
 
 Remplacez `prime_fit` par le nom de votre base si nécessaire. Ne l'importez pas si `stock_movements.note` existe déjà : les schémas `schema.sql` et `shop.sql` actuels incluent ces changements.
 
-Depuis les détails d'un produit, Admin et Gérant peuvent modifier son nom, sa référence, son prix et son seuil, le désactiver ou le réactiver, et corriger le stock à partir d'un comptage physique avec un motif obligatoire. L'écart et son auteur sont enregistrés dans l'historique ; les 100 derniers mouvements sont consultables. Une correction est refusée si le stock a changé depuis l'ouverture du formulaire. Le produit est verrouillé pendant la transaction, et une erreur d'audit annule la modification. Un produit inactif ne peut pas être vendu. Les prix des ventes existantes restent figés mais les noms affichés dans l'historique reprennent le nom actuel du produit. Les ajustements ne génèrent pas automatiquement de dépense, perte comptable ou remboursement.
+Depuis les détails d'un produit, Admin et Gérant peuvent modifier son nom, sa référence, son prix et son seuil, le désactiver ou le réactiver, et corriger le stock à partir d'un comptage physique avec un motif obligatoire. L'écart et son auteur sont enregistrés dans l'historique ; les 100 derniers mouvements sont consultables. Une correction est refusée si le stock a changé depuis l'ouverture du formulaire. Le produit est verrouillé pendant la transaction, et une erreur d'audit annule la modification. Un produit inactif ne peut pas être vendu. Les prix restent figés ; pour les nouvelles ventes, le nom et la référence sont également conservés, tandis que les anciennes ventes utilisent les valeurs actuelles du catalogue. Les ajustements ne génèrent pas automatiquement de dépense, perte comptable ou remboursement.
 
 ## Sécurité du compte
 

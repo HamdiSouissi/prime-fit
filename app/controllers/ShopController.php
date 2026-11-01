@@ -59,12 +59,13 @@ class ShopController {
                         $parts=explode('.',(string)$item['price'],2); $millimes=(int)$parts[0]*1000+(int)str_pad($parts[1] ?? '',3,'0');
                         if ($millimes*$quantity > 9999999999999) $this->fail('Le total dépasse le montant maximal autorisé.');
                         // Calcul SQL DECIMAL exact ; prix et total sont figés à la vente.
-                        $pdo->prepare('INSERT INTO shop_sales (product_id,quantity,unit_price,total,method,sold_by) VALUES (?,?,?,CAST(? AS DECIMAL(10,3))*?,?,?)')->execute([$product,$quantity,$item['price'],$item['price'],$quantity,$method,$_SESSION['user']['id']]);
+                        $pdo->prepare('INSERT INTO shop_sales (product_id,product_name_snapshot,product_sku_snapshot,quantity,unit_price,total,method,sold_by) VALUES (?,?,?,?,?,CAST(? AS DECIMAL(10,3))*?,?,?)')->execute([$product,$item['name'],$item['sku'],$quantity,$item['price'],$item['price'],$quantity,$method,$_SESSION['user']['id']]);
                         $sale=(int)$pdo->lastInsertId(); $pdo->prepare('UPDATE products SET stock=stock-? WHERE id=?')->execute([$quantity,$product]);
                         $pdo->prepare("INSERT INTO stock_movements (product_id,quantity_change,reason,sale_id,created_by) VALUES (?,?,'sale',?,?)")->execute([$product,-$quantity,$sale,$_SESSION['user']['id']]);
                         $this->audit($pdo,'Vente boutique #'.$sale); $_SESSION['flash']='Vente enregistrée et stock mis à jour.';
                     }
                     $pdo->commit();
+                    if ($action==='sale') redirect('shop_receipt&id='.$sale);
                 } else $this->fail('Action invalide.');
                 redirect('shop');
             } catch (DomainException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); $error=$ex->getMessage(); }
@@ -87,7 +88,26 @@ class ShopController {
         $stmt=$pdo->prepare('SELECT COALESCE(SUM(total),0) FROM shop_sales WHERE sold_at>=? AND sold_at<DATE_ADD(?,INTERVAL 1 DAY)'); $stmt->execute([$date,$date]); $salesTotal=$stmt->fetchColumn();
         $stmt=$pdo->prepare('SELECT COUNT(*) FROM shop_sales WHERE sold_at>=? AND sold_at<DATE_ADD(?,INTERVAL 1 DAY)'); $stmt->execute([$date,$date]); $total=(int)$stmt->fetchColumn();
         $pageNumber=max(1,(int)($_GET['p'] ?? 1)); $pageNumber=min($pageNumber,max(1,(int)ceil($total/10))); $offset=($pageNumber-1)*10;
-        $stmt=$pdo->prepare('SELECT s.*,p.name,p.sku,u.name AS seller FROM shop_sales s JOIN products p ON p.id=s.product_id LEFT JOIN users u ON u.id=s.sold_by WHERE s.sold_at>=? AND s.sold_at<DATE_ADD(?,INTERVAL 1 DAY) ORDER BY s.sold_at DESC,s.id DESC LIMIT 10 OFFSET '.$offset); $stmt->execute([$date,$date]); $sales=$stmt->fetchAll();
+        $stmt=$pdo->prepare('SELECT s.*,COALESCE(s.product_name_snapshot,p.name) AS name,COALESCE(s.product_sku_snapshot,p.sku) AS sku,u.name AS seller FROM shop_sales s JOIN products p ON p.id=s.product_id LEFT JOIN users u ON u.id=s.sold_by WHERE s.sold_at>=? AND s.sold_at<DATE_ADD(?,INTERVAL 1 DAY) ORDER BY s.sold_at DESC,s.id DESC LIMIT 10 OFFSET '.$offset); $stmt->execute([$date,$date]); $sales=$stmt->fetchAll();
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/shop.php';
     }
+    /** Lecture seule : mêmes rôles que la boutique, y compris sur l'URL directe. */
+    public function receipt(): void {
+        if (!in_array($_SESSION['user']['role'] ?? '',['Admin','Gérant','Réceptionniste','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        if ($_SERVER['REQUEST_METHOD']!=='GET') { http_response_code(405); exit('Méthode non autorisée.'); }
+        $id=filter_var($_GET['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Reçu introuvable.'); }
+        $stmt=db()->prepare('SELECT s.*,s.product_name_snapshot,s.product_sku_snapshot,p.name AS current_name,p.sku AS current_sku FROM shop_sales s LEFT JOIN products p ON p.id=s.product_id WHERE s.id=?');
+        $stmt->execute([$id]); $sale=$stmt->fetch();
+        if (!$sale) { http_response_code(404); exit('Reçu introuvable.'); }
+        $gymSettings=[];
+        try { $gymSettings=db()->query('SELECT address,phone,email,tax_id FROM gym_settings WHERE id=1')->fetch() ?: []; }
+        catch (PDOException $ex) {
+            $info=$ex->errorInfo ?? [];
+            if (!(($info[0] ?? '')==='42S02' && (int)($info[1] ?? 0)===1146 && stripos((string)($info[2] ?? ''),'gym_settings')!==false)) throw $ex;
+        }
+        header('Cache-Control: private, no-store');
+        require __DIR__.'/../views/shop_receipt.php';
+    }
+
 }

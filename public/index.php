@@ -59,7 +59,7 @@ try {
     elseif ($page === 'courses') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseController())->index(); }
     elseif ($page === 'coaches') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachController())->index(); }
     elseif ($page === 'fitness') { if (!isset($_SESSION['user'])) redirect('login'); (new FitnessController())->index(); }
-    elseif ($page === 'shop') { if (!isset($_SESSION['user'])) redirect('login'); (new ShopController())->index(); }
+    elseif (in_array($page, ['shop','shop_receipt'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new ShopController(); if ($page==='shop_receipt') $controller->receipt(); else $controller->index(); }
     elseif (in_array($page, ['equipment','equipment_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new EquipmentController(); if ($page==='equipment_export') $controller->export(); else $controller->index(); }
     elseif (in_array($page, ['finance', 'finance_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new FinanceController(); if ($page === 'finance_export') $controller->export(); else $controller->index(); }
     elseif ($page === 'marketing_consent') { if (!isset($_SESSION['user'])) redirect('login'); (new MarketingConsentController())->index(); }
@@ -86,6 +86,8 @@ try {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_discounts.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'payment_refunds') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/payment_refunds.sql dans la base utilisée.';
+    } elseif (($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'product_name_snapshot') !== false) {
+        echo 'La boutique doit être mise à jour : après sauvegarde, importez database/shop_sale_receipts.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'agreed_price') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_prices.sql dans la base utilisée. Les prix des anciens abonnements devront être vérifiés.';
     } else {
