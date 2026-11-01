@@ -39,12 +39,17 @@ if ($resolved['legacy'] && ($_SERVER['REQUEST_METHOD'] ?? 'GET')==='GET') {
 }
 try {
     // L'espace membre dispose d'une identité et de routes distinctes de celles du personnel.
-    if (in_array($page,['member_login','member_activate','member_space','member_details','member_logout'],true)) {
+    if (in_array($page,['member_login','member_activate','member_forgot','member_reset','member_qr_login','member_qr_confirm','member_space','member_details','member_my_card','member_logout'],true)) {
         $portal=new MemberPortalController();
         if ($page==='member_login') $portal->login();
         elseif ($page==='member_activate') $portal->activate();
+        elseif ($page==='member_forgot') $portal->forgot();
+        elseif ($page==='member_reset') $portal->reset();
+        elseif ($page==='member_qr_login') $portal->qrLogin();
+        elseif ($page==='member_qr_confirm') $portal->qrConfirm();
         elseif ($page==='member_logout') $portal->logout();
         elseif ($page==='member_details') $portal->profile();
+        elseif ($page==='member_my_card') $portal->card();
         else $portal->space();
         exit;
     }

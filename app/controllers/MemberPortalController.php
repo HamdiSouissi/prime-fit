@@ -5,6 +5,11 @@ require_once __DIR__.'/../services/MemberPortalInvitations.php';
 require_once __DIR__.'/../services/MemberPortalData.php';
 require_once __DIR__.'/../services/MemberPortalBooking.php';
 require_once __DIR__.'/../services/MemberPortalProfile.php';
+require_once __DIR__.'/../services/MemberPortalCard.php';
+require_once __DIR__.'/../services/MemberCardMailer.php';
+require_once __DIR__.'/../services/MemberPortalMailer.php';
+require_once __DIR__.'/../services/MemberPortalPasswordReset.php';
+require_once __DIR__.'/../services/MemberPortalQrLogin.php';
 require_once __DIR__.'/../services/LoginRateLimiter.php';
 /** Pages isolées de l'espace du personnel ; chaque requête protégée revalide la session. */
 final class MemberPortalController {
@@ -52,6 +57,84 @@ final class MemberPortalController {
         }
         $mode='activate'; require __DIR__.'/../views/member_portal_auth.php';
     }
+    public function forgot(): void {
+        $this->secureHeaders(); $error=''; $sent=false;
+        if ($_SERVER['REQUEST_METHOD']==='POST') {
+            verify_csrf(); $email=is_string($_POST['email'] ?? null) && strlen($_POST['email'])<=190 ? trim($_POST['email']) : '';
+            try {
+                $stmt=db()->prepare('SELECT member_id FROM member_portal_accounts WHERE email=? LIMIT 1'); $stmt->execute([$email]); $memberId=$stmt->fetchColumn();
+                $this->limit($memberId ? 'forgot-id:'.$memberId : 'forgot-unknown:'.mb_strtolower($email,'UTF-8'));
+                global $config;
+                $mailer=new MemberPortalMailer(array_merge($config['mail'] ?? [],['base_url'=>$config['base_url'] ?? '', 'gym_name'=>gym_name()]));
+                if ($mailer->configured()) {
+                    $invite=(new MemberPortalPasswordReset(db()))->issue($email);
+                    if ($invite && $mailer->sendReset($invite)!=='accepted') error_log('Envoi de réinitialisation membre impossible.');
+                } else error_log('Réinitialisation membre : messagerie ou URL non configurée.');
+                $sent=true;
+            } catch (DomainException $e) { $error=$e->getMessage(); }
+        }
+        $mode='forgot'; require __DIR__.'/../views/member_portal_reset.php';
+    }
+    public function reset(): void {
+        $this->secureHeaders(); $error=''; $success=false;
+        if ($_SERVER['REQUEST_METHOD']==='GET' && isset($_GET['token'])) {
+            $token=$_GET['token']; unset($_SESSION['member_reset']);
+            if (is_string($token) && preg_match('/\A[a-f0-9]{64}\z/D',$token)) $_SESSION['member_reset']=$token;
+            redirect('member_reset');
+        }
+        if ($_SERVER['REQUEST_METHOD']==='POST') {
+            verify_csrf();
+            try {
+                $token=$_SESSION['member_reset'] ?? '';
+                $this->limit('reset:'.hash('sha256',is_string($token) ? $token : ''));
+                $pass=$_POST['password'] ?? ''; $confirm=$_POST['confirmation'] ?? '';
+                if (!is_string($token) || !is_string($pass) || !is_string($confirm)) throw new DomainException('Lien ou mot de passe invalide.');
+                (new MemberPortalPasswordReset(db()))->reset($token,$pass,$confirm,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
+                unset($_SESSION['member_reset'],$_SESSION['member_portal'],$_SESSION['csrf']); session_regenerate_id(true); $success=true;
+            } catch (DomainException $e) { $error=$e->getMessage(); }
+        }
+        $mode='reset'; require __DIR__.'/../views/member_portal_reset.php';
+    }
+    public function qrLogin(): void {
+        $this->secureHeaders(); $error=''; $sent=false;
+        if ($_SERVER['REQUEST_METHOD']==='POST') {
+            verify_csrf(); $qr=is_string($_POST['qr'] ?? null) ? $_POST['qr'] : '';
+            if (strlen($qr)>68) $qr='';
+            try {
+                $id=null;
+                if (preg_match('/\APF1:([a-f0-9]{64})\z/D',$qr,$match)) { $stmt=db()->prepare('SELECT id FROM members WHERE qr_token=?'); $stmt->execute([$match[1]]); $id=$stmt->fetchColumn(); }
+                $this->limit($id ? 'qr-login-id:'.$id : 'qr-login-unknown:'.hash('sha256',$qr));
+                global $config; $mailer=new MemberPortalMailer(array_merge($config['mail'] ?? [],['base_url'=>$config['base_url'] ?? '','gym_name'=>gym_name()]));
+                if ($mailer->configured()) {
+                    $invite=(new MemberPortalQrLogin(db()))->issue($qr);
+                    if ($invite && $mailer->sendQrLogin($invite)!=='accepted') error_log('Envoi de confirmation de connexion membre impossible.');
+                } else error_log('Connexion QR membre : messagerie ou URL non configurée.');
+                $sent=true;
+            } catch (DomainException $e) { $error=$e->getMessage(); }
+        }
+        $mode='scan'; require __DIR__.'/../views/member_portal_qr_login.php';
+    }
+    public function qrConfirm(): void {
+        $this->secureHeaders(); $error='';
+        if ($_SERVER['REQUEST_METHOD']==='GET' && isset($_GET['token'])) {
+            $token=$_GET['token']; unset($_SESSION['member_qr_confirm']);
+            if (is_string($token) && preg_match('/\A[a-f0-9]{64}\z/D',$token)) $_SESSION['member_qr_confirm']=$token;
+            redirect('member_qr_confirm');
+        }
+        if ($_SERVER['REQUEST_METHOD']==='POST') {
+            verify_csrf();
+            try {
+                $token=$_SESSION['member_qr_confirm'] ?? '';
+                $this->limit('qr-confirm:'.hash('sha256',is_string($token) ? $token : ''));
+                if (!is_string($token)) throw new DomainException('Lien invalide ou expiré.');
+                $session=(new MemberPortalQrLogin(db()))->confirm($token,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
+                session_regenerate_id(true); $_SESSION['member_portal']=$session;
+                unset($_SESSION['member_qr_confirm'],$_SESSION['csrf'],$_SESSION['portal_notice'],$_SESSION['portal_profile_notice'],$_SESSION['portal_card_notice']);
+                redirect('member_space');
+            } catch (DomainException $e) { $error=$e->getMessage(); }
+        }
+        $mode='confirm'; require __DIR__.'/../views/member_portal_qr_login.php';
+    }
     public function space(): void {
         $this->secureHeaders(); $auth=new MemberPortalAuth(db());
         if (!$auth->validSession($_SESSION['member_portal'] ?? null)) { unset($_SESSION['member_portal']); redirect('member_login'); }
@@ -75,6 +158,28 @@ final class MemberPortalController {
         $data=(new MemberPortalData(db()))->get($_SESSION['member_portal']['member_id']);
         require __DIR__.'/../views/member_portal.php';
     }
+    public function card(): void {
+        $this->secureHeaders();
+        if (!(new MemberPortalAuth(db()))->validSession($_SESSION['member_portal'] ?? null)) { unset($_SESSION['member_portal']); redirect('member_login'); }
+        $session=$_SESSION['member_portal']; $service=new MemberPortalCard(db());
+        try { $member=$service->get($session); } catch (DomainException $e) { unset($_SESSION['member_portal']); redirect('member_login'); }
+        if ($_SERVER['REQUEST_METHOD']==='POST') {
+            verify_csrf();
+            try {
+                $this->limit('qr-mail:'.$session['member_id']);
+                // Relecture avant envoi : ni destinataire ni QR ne proviennent de la requête.
+                $member=$service->get($session);
+                global $config;
+                $status=(new MemberCardMailer(array_merge($config['mail'] ?? [],['gym_name'=>gym_name()])))->send($member);
+                $messages=['accepted'=>'Votre carte a été acceptée par le serveur de messagerie. Vérifiez votre boîte de réception.','not_configured'=>'La messagerie n’est pas configurée. Contactez votre salle.','missing_email'=>'Votre adresse e-mail est indisponible. Contactez votre salle.','missing_qr'=>'Aucune carte QR n’est disponible. Contactez votre salle.','failed'=>'L’envoi a échoué. Veuillez réessayer ou contacter votre salle.'];
+                $_SESSION['portal_card_notice']=['type'=>$status==='accepted' ? 'success' : 'error','message'=>$messages[$status]];
+                if ($status==='accepted') db()->prepare('INSERT INTO activity_logs (user_id,action,ip_address) VALUES (NULL,?,?)')->execute(['Espace membre : carte QR demandée par e-mail membre #'.$session['member_id'],substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45)]);
+            } catch (DomainException $e) { $_SESSION['portal_card_notice']=['type'=>'error','message'=>$e->getMessage()]; }
+            redirect('member_my_card');
+        }
+        $notice=$_SESSION['portal_card_notice'] ?? null; unset($_SESSION['portal_card_notice']);
+        require __DIR__.'/../views/member_portal_card.php';
+    }
     public function profile(): void {
         $this->secureHeaders(); $auth=new MemberPortalAuth(db());
         if (!$auth->validSession($_SESSION['member_portal'] ?? null)) { unset($_SESSION['member_portal']); redirect('member_login'); }
@@ -96,6 +201,6 @@ final class MemberPortalController {
     }
     public function logout(): void {
         $this->secureHeaders(); if ($_SERVER['REQUEST_METHOD']!=='POST') { http_response_code(405); exit; }
-        verify_csrf(); unset($_SESSION['member_portal'],$_SESSION['member_activation'],$_SESSION['portal_notice'],$_SESSION['portal_profile_notice'],$_SESSION['csrf']); session_regenerate_id(true); redirect('member_login');
+        verify_csrf(); unset($_SESSION['member_portal'],$_SESSION['member_activation'],$_SESSION['member_reset'],$_SESSION['member_qr_confirm'],$_SESSION['portal_notice'],$_SESSION['portal_profile_notice'],$_SESSION['portal_card_notice'],$_SESSION['csrf']); session_regenerate_id(true); redirect('member_login');
     }
 }
