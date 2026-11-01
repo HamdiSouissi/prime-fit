@@ -1,0 +1,44 @@
+<?php
+declare(strict_types=1);
+// Test autonome : php tests/member_card_number.php (extensions PDO SQLite et mbstring).
+class TestRedirect extends Exception {}
+function gym_name(): string { return 'Horizon Sportif de Bir El Hafey'; }
+function verify_csrf(): void {}
+function redirect(string $route): void { throw new TestRedirect($route); }
+function db(): PDO { global $pdo; return $pdo; }
+class MemberTestPDO extends PDO { public function prepare(string $sql,array $options=[]): PDOStatement|false { return parent::prepare(str_replace(' FOR UPDATE','',$sql),$options); } }
+$pdo = new MemberTestPDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+$pdo->exec('CREATE TABLE members (id INTEGER PRIMARY KEY AUTOINCREMENT, first_name TEXT, last_name TEXT, phone TEXT, email TEXT, card_number TEXT UNIQUE, governorate TEXT, birth_date TEXT, status TEXT, qr_token TEXT UNIQUE, created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
+$pdo->exec('CREATE TABLE activity_logs (user_id INTEGER, action TEXT, ip_address TEXT)');
+require __DIR__.'/../app/controllers/ManagementController.php';
+$_SESSION=['user'=>['id'=>1,'role'=>'Admin']]; $_SERVER['REQUEST_METHOD']='POST'; $_SERVER['REMOTE_ADDR']='127.0.0.1';
+$controller=new ManagementController();
+for ($i=0; $i<2; $i++) {
+    $_POST=['id'=>'0','first_name'=>'Membre','last_name'=>(string)$i,'status'=>'active','email'=>'membre@example.tn','card_number'=>'USURPÉ'];
+    try { $controller->members(); throw new RuntimeException('Redirection attendue'); } catch (TestRedirect $redirect) {
+        if ($redirect->getMessage() !== 'member_card&id='.($i+1)) throw new RuntimeException('Redirection incorrecte');
+    }
+}
+$members=$pdo->query('SELECT * FROM members ORDER BY id')->fetchAll();
+if (count($members)!==2 || !preg_match('/^PF-[0-9]{16}$/D',$members[0]['card_number']) || $members[0]['card_number']===$members[1]['card_number'] || $members[0]['card_number']==='USURPÉ' || !preg_match('/^[0-9a-f]{64}$/D',$members[0]['qr_token'])) throw new RuntimeException('Création ou unicité incorrecte');
+$_POST=['id'=>'1','first_name'=>'Modifié','last_name'=>'Membre','status'=>'active','card_number'=>'CARTE-FORGÉE'];
+try { $controller->members(); throw new RuntimeException('Redirection attendue'); } catch (TestRedirect $redirect) {
+    if ($redirect->getMessage() !== 'members') throw new RuntimeException('Redirection incorrecte');
+}
+$updated=$pdo->query('SELECT * FROM members WHERE id=1')->fetch();
+if ($updated['card_number']!==$members[0]['card_number'] || $updated['qr_token']!==$members[0]['qr_token'] || $updated['first_name']!=='Modifié') throw new RuntimeException('Modification non autorisée du numéro ou du QR');
+$pdo->exec("CREATE TABLE marketing_consent_events (id INTEGER PRIMARY KEY,member_id INTEGER,decision TEXT,phone_value TEXT,evidence TEXT,created_by INTEGER)");
+$_POST=['id'=>'1','first_name'=>'Modifié','last_name'=>'Membre','phone'=>'12345678','status'=>'active'];
+try { $controller->members(); throw new RuntimeException('Redirection attendue'); } catch (TestRedirect $redirect) {}
+$pdo->exec("INSERT INTO marketing_consent_events (member_id,decision,phone_value,evidence,created_by) VALUES (1,'accepted','12345678','Formulaire signé',1)");
+$_POST['phone']='98765432';
+try { $controller->members(); throw new RuntimeException('Redirection attendue'); } catch (TestRedirect $redirect) {}
+if ($pdo->query('SELECT decision FROM marketing_consent_events WHERE member_id=1 ORDER BY id DESC LIMIT 1')->fetchColumn()!=='invalidated' || $pdo->query('SELECT phone FROM members WHERE id=1')->fetchColumn()!=='98765432') throw new RuntimeException('Numéro non invalidé transactionnellement');
+echo "Création et modification des numéros de carte : OK\n";
+// Vérification du diagnostic sans divulguer le message SQL à l'utilisateur.
+$missing = new PDOException('Unknown column');
+$missing->errorInfo = ['42S22', 1054, "Unknown column 'qr_token' in 'field list'"];
+$other = new PDOException('Unknown column');
+$other->errorInfo = ['42S22', 1054, "Unknown column 'other' in 'field list'"];
+if (!ManagementController::missingQrColumn($missing) || ManagementController::missingQrColumn($other)) throw new RuntimeException('Diagnostic de migration incorrect');
+echo "Diagnostic de migration QR : OK\n";

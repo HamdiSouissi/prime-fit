@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS shop_sales (
  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
  product_id INT UNSIGNED NOT NULL,
+ product_name_snapshot VARCHAR(120) NULL,
+ product_sku_snapshot VARCHAR(50) NULL,
  quantity INT UNSIGNED NOT NULL,
  unit_price DECIMAL(10,3) NOT NULL,
  total DECIMAL(13,3) NOT NULL,
@@ -24,11 +26,21 @@ CREATE TABLE IF NOT EXISTS shop_sales (
  FOREIGN KEY (sold_by) REFERENCES users(id) ON DELETE SET NULL,
  INDEX idx_shop_sales_date (sold_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Après sauvegarde, sélectionner la base contenant shop_sales.
+-- Les anciennes ventes ne sont pas modifiées.
+CREATE TABLE IF NOT EXISTS shop_sale_requests (
+ request_token CHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+ request_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ sale_id BIGINT UNSIGNED NULL UNIQUE,
+ FOREIGN KEY (sale_id) REFERENCES shop_sales(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS stock_movements (
  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
  product_id INT UNSIGNED NOT NULL,
  quantity_change INT NOT NULL,
- reason ENUM('initial','restock','sale') NOT NULL,
+ reason ENUM('initial','restock','sale','adjustment') NOT NULL,
+ note VARCHAR(255) NULL,
  sale_id BIGINT UNSIGNED NULL,
  created_by INT UNSIGNED NULL,
  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

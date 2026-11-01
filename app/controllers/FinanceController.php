@@ -36,6 +36,7 @@ class FinanceController {
         [$month,$start,$end]=$this->period();
         $sum=function(string $sql) use ($pdo,$start,$end) { $stmt=$pdo->prepare($sql); $stmt->execute([$start,$end]); return $stmt->fetchColumn(); };
         $subscriptionTotal=$sum('SELECT COALESCE(SUM(amount),0) FROM payments WHERE paid_at>=? AND paid_at<?');
+        $subscriptionTotal=(float)$subscriptionTotal-(float)$sum('SELECT COALESCE(SUM(amount),0) FROM payment_refunds WHERE refunded_at>=? AND refunded_at<?');
         $shopTotal=$sum('SELECT COALESCE(SUM(total),0) FROM shop_sales WHERE sold_at>=? AND sold_at<?');
         $expenseTotal=$sum('SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_date>=? AND expense_date<?');
         $stmt=$pdo->prepare('SELECT category,SUM(amount) AS total FROM expenses WHERE expense_date>=? AND expense_date<? GROUP BY category ORDER BY total DESC,category'); $stmt->execute([$start,$end]); $categories=$stmt->fetchAll();

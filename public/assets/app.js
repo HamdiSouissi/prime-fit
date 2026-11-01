@@ -143,7 +143,8 @@
       a.href = URL.createObjectURL(blob); a.download = (name || 'export') + '.csv';
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
-    tools.append(input, exp);
+    tools.append(input);
+    if (!table.hasAttribute('data-no-client-export')) tools.append(exp);
     scroller.before(tools);
 
     // Tri
@@ -198,6 +199,11 @@
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip }, scales: { y: { beginAtZero: false, grid: { color: css('--border') }, border: { display: false } }, x: { grid: { display: false }, border: { display: false } } } } }));
   }
 
+  if (window.reportData && $('#reportChart')) {
+    const d = window.reportData;
+    charts.push(new Chart($('#reportChart'), {type:'bar', data:{labels:d.labels,datasets:[{label:'Encaissements',data:d.income,backgroundColor:'#FFD400',borderRadius:3},{label:'Dépenses',data:d.expense,backgroundColor:'#EF4444',borderRadius:3}]}, options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true},tooltip},scales:{x:{grid:{display:false},border:{display:false}},y:{beginAtZero:true,grid:{color:css('--border')},border:{display:false},ticks:{callback:v=>v+' DT'}}}}}));
+  }
+
   if (window.dashboardData && $('#revenueChart')) {
     const d = window.dashboardData, ctx = $('#revenueChart').getContext('2d');
     const g = ctx.createLinearGradient(0, 0, 0, 220); g.addColorStop(0, 'rgba(255,212,0,.32)'); g.addColorStop(1, 'rgba(255,212,0,0)');
@@ -205,6 +211,9 @@
       options: { responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: 'index' },
         plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: c => c.parsed.y.toLocaleString('fr-FR', { minimumFractionDigits: 3 }) + ' DT' } } },
         scales: { x: { grid: { display: false }, border: { display: false } }, y: { beginAtZero: true, grid: { color: css('--border') }, border: { display: false }, ticks: { maxTicksLimit: 4, callback: v => v + ' DT' } } } } }));
+  }
+  if (window.dashboardData && $('#planChart')) {
+    const d = window.dashboardData;
     const has = d.planValues.some(Boolean);
     charts.push(new Chart($('#planChart'), { type: 'doughnut', data: { labels: d.planLabels, datasets: [{ data: has ? d.planValues : [1], backgroundColor: has ? palette : ['#3A3A3A'], borderWidth: 0, spacing: 4, borderRadius: 8, hoverOffset: 6 }] },
       options: { responsive: true, maintainAspectRatio: false, cutout: '78%', plugins: { legend: { display: false }, tooltip: { ...tooltip, enabled: has } } } }));

@@ -13,7 +13,7 @@ header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 function e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function csrf(): string { return $_SESSION['csrf'] ??= bin2hex(random_bytes(32)); }
-function verify_csrf(): void { if (!hash_equals($_SESSION['csrf'] ?? '', $_POST['csrf'] ?? '')) { http_response_code(419); exit('Session expirée. Actualisez la page.'); } }
+function verify_csrf(): void { $token=$_POST['csrf'] ?? null; $expected=$_SESSION['csrf'] ?? null; if (!is_string($token) || !is_string($expected) || $expected==='' || !hash_equals($expected,$token)) { http_response_code(419); exit('Session expirée. Actualisez la page.'); } }
 function db(): PDO {
     global $config;
     static $pdo = null;
@@ -23,5 +23,20 @@ function db(): PDO {
     }
     return $pdo;
 }
-function redirect(string $route): void { header('Location: index.php?page=' . $route); exit; }
+function gym_name(): string {
+    global $config;
+    static $name=null;
+    if ($name===null) {
+        require_once __DIR__.'/../services/GymBrand.php';
+        try { $name=GymBrand::resolve(db(),$config['app_name'] ?? null); }
+        catch (PDOException $ex) { $name=GymBrand::clean($config['app_name'] ?? null) ?? 'Horizon Sportif de Bir El Hafey'; }
+    }
+    return $name;
+}
+function gym_brand_markup(): string {
+    $parts=preg_split('/\s+/u',gym_name(),2); $first=e($parts[0]); $rest=isset($parts[1]) ? ' <span class="brand-gold">'.e($parts[1]).'</span>' : '';
+    return $first.$rest.'<small>CLUB DE SPORT</small>';
+}
+require_once __DIR__.'/UrlRouter.php';
+function redirect(string $route): void { header('Location: '.UrlRouter::redirectTarget($route)); exit; }
 function dt($amount): string { return number_format((float)$amount, 3, ',', ' ') . ' DT'; }

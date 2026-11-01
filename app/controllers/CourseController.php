@@ -1,4 +1,7 @@
 <?php
+require_once __DIR__.'/../services/CoachSchedule.php';
+require_once __DIR__.'/../services/MemberSchedule.php';
+require_once __DIR__.'/../services/CourseSearch.php';
 class CourseController {
     private function canWrite(): bool { return in_array($_SESSION['user']['role'], ['Admin','Gérant','Réceptionniste'], true); }
     private function log(PDO $pdo, string $action): void {
@@ -28,9 +31,11 @@ class CourseController {
                     $pdo->beginTransaction();
                     // Le verrou de salle sérialise les créations et empêche les chevauchements.
                     $stmt=$pdo->prepare('SELECT id FROM rooms WHERE id=? FOR UPDATE'); $stmt->execute([$room]); if (!$stmt->fetch()) $this->fail('Salle introuvable.');
-                    if ($coach) { $stmt=$pdo->prepare("SELECT id FROM users WHERE id=? AND role='Coach' AND is_active=1"); $stmt->execute([$coach]); if (!$stmt->fetch()) $this->fail('Coach introuvable ou inactif.'); }
+                    // Même verrou utilisateur que les séances privées ; salle puis coach.
+                    if ($coach) { $schedule=new CoachSchedule($pdo); $schedule->lockCoach((int)$coach); }
                     elseif (($_POST['coach_id'] ?? '') !== '') $this->fail('Coach invalide.');
                     $stmt=$pdo->prepare("SELECT id FROM courses WHERE room_id=? AND status='scheduled' AND starts_at < ? AND ends_at > ? LIMIT 1"); $stmt->execute([$room,$end,$start]); if ($stmt->fetch()) $this->fail('Cette salle est déjà occupée sur ce créneau.');
+                    if ($coach) $schedule->assertAvailable((int)$coach,$start,$end);
                     $pdo->prepare('INSERT INTO courses (title,room_id,coach_id,starts_at,ends_at,capacity) VALUES (?,?,?,?,?,?)')->execute([$title,$room,$coach ?: null,$start,$end,$capacity]); $this->log($pdo,'Cours créé #'.$pdo->lastInsertId()); $pdo->commit(); $_SESSION['flash']='Cours ajouté au planning.';
                 } elseif (in_array($action,['book','cancel_booking','cancel_course'],true)) {
                     $course=filter_var($_POST['course_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); if (!$course) $this->fail('Cours invalide.');
@@ -42,9 +47,12 @@ class CourseController {
                         $this->log($pdo,'Cours annulé #'.$course); $_SESSION['flash']='Cours et réservations annulés.';
                     } elseif ($action==='book') {
                         $member=filter_var($_POST['member_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); if (!$member) $this->fail('Sélectionnez un membre.');
-                        $stmt=$pdo->prepare("SELECT m.id FROM members m WHERE m.id=? AND m.status='active' AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.member_id=m.id AND s.status='active' AND s.start_date <= DATE(?) AND s.end_date >= DATE(?))"); $stmt->execute([$member,$c['starts_at'],$c['starts_at']]); if (!$stmt->fetch()) $this->fail('Le membre doit être actif et disposer d’un abonnement valide à la date du cours.');
+                        $memberSchedule=new MemberSchedule($pdo);
+                        if (!$memberSchedule->lockActiveMember((int)$member) || !$memberSchedule->hasSubscription((int)$member,$c['starts_at'])) $this->fail('Le membre doit être actif et disposer d’un abonnement valide à la date du cours.');
                         $stmt=$pdo->prepare('SELECT id,status FROM course_bookings WHERE course_id=? AND member_id=?'); $stmt->execute([$course,$member]); $existing=$stmt->fetch(); if ($existing && $existing['status']!=='cancelled') $this->fail('Ce membre est déjà inscrit à ce cours.');
                         $stmt=$pdo->prepare("SELECT COUNT(*) FROM course_bookings WHERE course_id=? AND status='confirmed'"); $stmt->execute([$course]); $status=(int)$stmt->fetchColumn() < (int)$c['capacity'] ? 'confirmed' : 'waiting';
+                        if ($status==='confirmed' && $memberSchedule->hasPrivateConflict((int)$member,$c['starts_at'],$c['ends_at'])) $this->fail('Le membre a déjà une séance privée sur ce créneau.');
+                        if ($status==='confirmed' && $memberSchedule->hasConfirmedCourseConflict((int)$member,$c['starts_at'],$c['ends_at'],(int)$course)) $this->fail('Le membre est déjà inscrit à un autre cours collectif sur ce créneau.');
                         if ($existing) $pdo->prepare('UPDATE course_bookings SET status=?,created_at=NOW() WHERE id=?')->execute([$status,$existing['id']]); else $pdo->prepare('INSERT INTO course_bookings (course_id,member_id,status) VALUES (?,?,?)')->execute([$course,$member,$status]);
                         $this->log($pdo,'Réservation '.$status.' cours #'.$course.' membre #'.$member); $_SESSION['flash']=$status==='confirmed' ? 'Réservation confirmée.' : 'Cours complet : membre ajouté à la liste d’attente.';
                     } else {
@@ -52,9 +60,9 @@ class CourseController {
                         $pdo->prepare("UPDATE course_bookings SET status='cancelled' WHERE id=?")->execute([$booking]);
                         $promoted=false;
                         if ($b['status']==='confirmed') {
-                            // Seuls les membres toujours éligibles sont promus, dans l'ordre d'inscription.
-                            $stmt=$pdo->prepare("SELECT b.id FROM course_bookings b JOIN members m ON m.id=b.member_id WHERE b.course_id=? AND b.status='waiting' AND m.status='active' AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.member_id=m.id AND s.status='active' AND s.start_date<=DATE(?) AND s.end_date>=DATE(?)) ORDER BY b.created_at,b.id LIMIT 1"); $stmt->execute([$course,$c['starts_at'],$c['starts_at']]); $next=$stmt->fetchColumn();
-                            if ($next) { $pdo->prepare("UPDATE course_bookings SET status='confirmed' WHERE id=?")->execute([$next]); $this->log($pdo,'Liste d’attente promue réservation #'.$next); $promoted=true; }
+                            $promotions=(new MemberSchedule($pdo))->promote((int)$course,$c['starts_at'],$c['ends_at'],1);
+                            foreach ($promotions as $next) $this->log($pdo,'Liste d’attente promue réservation #'.$next);
+                            $promoted=(bool)$promotions;
                         }
                         $this->log($pdo,'Réservation annulée #'.$booking); $_SESSION['flash']=$promoted ? 'Réservation annulée ; la première personne éligible en attente a été confirmée.' : 'Réservation annulée.';
                     }
@@ -62,12 +70,28 @@ class CourseController {
                 } else $this->fail('Action invalide.');
                 redirect(isset($course) && in_array($action, ['book','cancel_booking'], true) ? 'courses&course='.$course : 'courses');
             } catch (DomainException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); $error=$ex->getMessage(); }
-              catch (PDOException $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); if ($ex->getCode()==='23000') $error='Cette salle ou réservation existe déjà.'; else throw $ex; }
+              catch (PDOException $ex) { if ($pdo->inTransaction()) $pdo->rollBack();
+                  if (($ex->errorInfo[0] ?? '')==='42S02' && (int)($ex->errorInfo[1] ?? 0)===1146 && stripos((string)($ex->errorInfo[2] ?? ''),'private_sessions')!==false) $error='La table des séances privées est absente. Après sauvegarde, installez le module Coachs avant de gérer les cours et inscriptions.';
+                  elseif (in_array((int)($ex->errorInfo[1] ?? 0),[1205,1213],true)) $error='Une modification concurrente a empêché l’opération. Vérifiez les inscriptions actuelles puis réessayez.';
+                  elseif ($ex->getCode()==='23000') $error='Cette salle ou réservation existe déjà.'; else throw $ex; }
         }
         $rooms=db()->query('SELECT * FROM rooms ORDER BY name')->fetchAll();
         $coaches=db()->query("SELECT id,name FROM users WHERE role='Coach' AND is_active=1 ORDER BY name")->fetchAll();
         $members=db()->query("SELECT id,first_name,last_name,card_number FROM members WHERE status='active' ORDER BY last_name,first_name")->fetchAll();
-        $courses=db()->query("SELECT c.*, r.name AS room, u.name AS coach, (SELECT COUNT(*) FROM course_bookings b WHERE b.course_id=c.id AND b.status='confirmed') AS confirmed, (SELECT COUNT(*) FROM course_bookings b WHERE b.course_id=c.id AND b.status='waiting') AS waiting FROM courses c JOIN rooms r ON r.id=c.room_id LEFT JOIN users u ON u.id=c.coach_id WHERE c.starts_at >= CURDATE() ORDER BY c.starts_at LIMIT 100")->fetchAll();
+        $filterError=''; $result=['courses'=>[],'total'=>0,'page'=>1,'pages'=>1];
+        try {
+            $filters=CourseSearch::filters($_GET,date('Y-m-d'));
+            $requestedPage=filter_var($_GET['p'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]) ?: 1;
+            $result=(new CourseSearch(db()))->search($filters,(int)$requestedPage);
+        } catch (DomainException $ex) {
+            $filterError=$ex->getMessage(); $filters=['q'=>'','from'=>'','to'=>'','status'=>''];
+            foreach ($filters as $key=>$_) if (is_string($_GET[$key] ?? null)) $filters[$key]=$_GET[$key];
+        }
+        $courses=$result['courses'];
+        // On conserve les filtres pour consulter une fiche et parcourir les pages.
+        $courseUrl=static function(array $extra=[]) use ($filters,$result): string {
+            return 'courses?'.http_build_query(array_merge(['filter'=>'1'],$filters,['p'=>$result['page']],$extra));
+        };
         $selected=filter_var($_GET['course'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $selectedCourse=null; $bookings=[];
         if ($selected) {
             $stmt=db()->prepare('SELECT c.*,r.name AS room FROM courses c JOIN rooms r ON r.id=c.room_id WHERE c.id=?'); $stmt->execute([$selected]); $selectedCourse=$stmt->fetch();

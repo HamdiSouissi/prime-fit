@@ -448,3 +448,102 @@ footer span:last-child{margin-left:auto}
   .spark .line{stroke-dashoffset:0}
 }
 @media(forced-colors:active){.primary,.btn-primary{border:1px solid ButtonText}.status{border:1px solid currentColor}}
+/* Cartes QR et scanner : mêmes couleurs et typographies que le reste de Prime Fit. */
+.scanner-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.scanner-stop{background:var(--glass-2);color:var(--text);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:12px 16px;font-weight:700}
+.qr-reader{max-width:420px;margin-top:15px;overflow:hidden;border:1px solid var(--border);border-radius:var(--r-md)}
+.qr-reader video{max-width:100%;display:block}
+.member-card-layout{display:grid;grid-template-columns:minmax(0,420px) minmax(220px,360px);gap:20px;align-items:start}
+.member-card-preview{background:#fff;color:#0a0a0a;border:1px solid #e0e0da;padding:30px;text-align:center;box-shadow:var(--shadow)}
+.member-card-brand{font:800 30px/1 var(--font-display);letter-spacing:.02em;text-transform:uppercase}
+.member-card-brand span{background:#ffd400;color:#0a0a0a;padding:0 3px}
+.member-card-brand small{display:block;color:#555;font:700 10px var(--font);letter-spacing:.14em;margin-top:8px}
+.member-card-label{font-size:11px;letter-spacing:.14em;font-weight:700;color:#555;margin:28px 0 4px}
+.member-card-preview h2{font-size:30px;color:#0a0a0a}.member-card-number,.member-card-hint{color:#555}.member-card-hint{font-size:13px}
+.qr-shell{display:inline-block;background:white;padding:18px;border:1px solid #dedede;margin:12px auto}
+#member-qr img,#member-qr canvas{max-width:100%;height:auto}
+.member-card-actions{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.member-card-side p{color:var(--muted);line-height:1.6}.member-card-side .primary{margin-top:8px}
+@media(max-width:760px){.member-card-layout{grid-template-columns:1fr}}
+@media print{
+ body.member-card-page{background:#fff;color:#000}
+ body.member-card-page .sidebar,body.member-card-page .backdrop,body.member-card-page .topbar,body.member-card-page .heading,body.member-card-page .notice,body.member-card-page footer,body.member-card-page .no-print,body.member-card-page .skip-link{display:none!important}
+ body.member-card-page .main-wrap{margin:0!important;width:100%!important}
+ body.member-card-page .content{padding:0!important;margin:0!important}
+ body.member-card-page .member-card-layout{display:block}
+ body.member-card-page .member-card-preview{box-shadow:none;max-width:420px;break-inside:avoid}
+}
+.member-card-page [hidden],.scanner-controls [hidden],.qr-reader[hidden]{display:none!important}
+
+/* Notifications et confirmations — modale accessible, charte Prime Fit. */
+[data-notification][hidden],.prime-popup [hidden]{display:none!important}
+.prime-popup{width:min(460px,calc(100% - 32px));max-width:calc(100% - 32px);max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--border-strong);border-radius:10px;background:var(--card);color:var(--text);box-shadow:0 30px 90px rgba(0,0,0,.6);overflow:auto}
+.prime-popup::backdrop{background:rgba(0,0,0,.74);backdrop-filter:blur(5px)}
+.prime-popup[open]{animation:prime-popup-enter .25s var(--ease) both}
+.prime-popup-accent{height:5px;background:var(--accent)}
+.prime-popup-inner{padding:28px 30px 30px}
+.prime-popup-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px}
+.prime-popup-icon{display:grid;place-items:center;width:52px;height:52px;border-radius:8px;background:var(--grad-soft);color:var(--accent-text);font:800 26px/1 var(--font-display);border:1px solid rgba(255,212,0,.3)}
+.prime-popup[data-type=success] .prime-popup-icon{background:var(--ok-bg);color:var(--ok-text);border-color:var(--ok)}
+.prime-popup[data-type=error] .prime-popup-icon{background:var(--err-bg);color:var(--err-text);border-color:var(--err)}
+.prime-popup[data-type=warning] .prime-popup-icon{background:var(--warn-bg);color:var(--warn-text);border-color:var(--warn)}
+.prime-popup-close{display:grid;place-items:center;border:1px solid var(--border);background:var(--glass-2);color:var(--muted);border-radius:var(--r-sm);width:36px;height:36px;font-size:24px;line-height:1}
+.prime-popup-close:hover{color:var(--text);border-color:var(--border-strong)}
+.prime-popup-kicker{color:var(--accent-text);font-size:10px;font-weight:700;letter-spacing:.16em;margin-bottom:7px}
+.prime-popup h2{font:800 30px/1.05 var(--font-display);color:var(--text);margin:0 0 12px}
+.prime-popup p{color:var(--muted);font-size:15px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.prime-popup-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:26px}
+.prime-popup-cancel{min-height:44px;padding:0 20px;background:var(--glass-2);border:1px solid var(--border-strong);color:var(--text);border-radius:var(--r-sm);font-family:var(--font-display);font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+@keyframes prime-popup-enter{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:480px){.prime-popup-inner{padding:22px}.prime-popup h2{font-size:26px}.prime-popup-actions>*{flex:1}}
+@media(prefers-reduced-motion:reduce){.prime-popup[open]{animation:none}.prime-popup::backdrop{backdrop-filter:none}}
+
+/* Résultat du contrôle d'accès : fiche lisible immédiatement à l'accueil. */
+.prime-popup[data-kind=access]{width:min(550px,calc(100% - 32px));max-width:calc(100% - 32px)}
+.prime-popup[data-kind=access] .prime-popup-accent{height:6px}
+.prime-popup[data-kind=access] .prime-popup-head{margin-bottom:17px}
+.prime-popup[data-kind=access] .prime-popup-icon{width:56px;height:56px;font-size:30px;border-radius:50%}
+.prime-popup[data-kind=access] h2{font-size:36px;line-height:1;margin-bottom:9px}
+.prime-popup[data-kind=access][data-type=success] h2{color:var(--ok-text)}
+.prime-popup[data-kind=access][data-type=error] h2{color:var(--err-text)}
+.prime-popup-member{margin-top:22px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--glass-2)}
+.prime-member-head{display:flex;align-items:center;gap:14px;padding:18px;border-bottom:1px solid var(--border)}
+.prime-member-avatar{display:grid;place-items:center;flex-shrink:0;width:48px;height:48px;border-radius:7px;background:var(--accent);color:#0a0a0a;font:800 20px/1 var(--font-display)}
+.prime-member-eyebrow{display:block;color:var(--accent-text);font-size:10px;font-weight:700;letter-spacing:.13em;margin-bottom:4px}
+.prime-member-name{display:block;color:var(--text);font:800 23px/1.1 var(--font-display);overflow-wrap:anywhere}
+.prime-member-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;margin:0;padding:4px 18px 12px}
+.prime-member-grid>div{padding:12px 8px 6px 0;min-width:0}.prime-member-grid dt{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px}
+.prime-member-grid dd{margin:0;color:var(--text);font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.prime-popup[data-kind=access] .prime-popup-actions .primary{min-width:150px}
+.access-fallback-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0 0;font-size:14px}.access-fallback-details dt{font-weight:700}.access-fallback-details dd{margin:0;overflow-wrap:anywhere}
+@media(max-width:480px){.prime-popup[data-kind=access] h2{font-size:30px}.prime-member-grid{grid-template-columns:1fr 1fr}.prime-member-grid dd{font-size:13px}.prime-member-head{padding:15px}}
+/* Nom de la salle sur deux lignes pour préserver la lisibilité du menu. */
+.brand-text{font-size:21px;letter-spacing:.01em;min-width:0}
+.brand-text small{font-size:10px;letter-spacing:.12em}
+.member-card-brand{font-size:27px}
+.member-card-brand small{font-size:9px;letter-spacing:.08em}
+.report-chart{height:260px;margin-top:24px}.report-highlight{font:800 62px/1 var(--font-display);color:var(--accent-text);margin:24px 0 12px}.report-breakdown{margin-top:24px;border-top:1px solid var(--border)}.report-breakdown>div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding:12px 0;color:var(--muted);font-size:13px}.report-breakdown strong{color:var(--text);white-space:nowrap}.report-method p{font-size:13px;line-height:1.65;color:var(--muted)}.report-method p strong{color:var(--text)}
+@media print{body.reports-page{background:#fff;color:#000}body.reports-page .sidebar,body.reports-page .backdrop,body.reports-page .topbar,body.reports-page .skip-link,body.reports-page .search-form,body.reports-page .table-tools,body.reports-page footer{display:none!important}body.reports-page .main-wrap{margin:0!important;width:100%!important}body.reports-page .content{padding:0!important;max-width:none}body.reports-page .card,body.reports-page .stat-card{background:#fff;color:#000;box-shadow:none;break-inside:avoid}body.reports-page .card *,body.reports-page .stat-card *{color:#000!important}body.reports-page .stats{grid-template-columns:repeat(2,1fr)}body.reports-page .table-scroll{overflow:visible}body.reports-page table{font-size:10px}}
+.subscription-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.subscription-actions form{margin:0}.subscription-actions .link-button{white-space:nowrap}
+.settings-form{margin-top:24px}.settings-form input[readonly],.settings-form :disabled{opacity:.72;cursor:not-allowed}.settings-panel{margin-top:16px}
+.inventory-actions{margin-top:24px}.inventory-actions .form-card{padding:16px;border:1px solid var(--border);border-radius:var(--r)}.inventory-toggle{margin-top:10px}.inventory-history-title{margin-top:26px}
+.account-card{max-width:760px}.account-form{margin-top:24px}
+.member-profile-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:18px;margin:24px 0}.member-profile-details dt{font-size:12px;color:var(--muted);margin-bottom:5px}.member-profile-details dd{margin:0;overflow-wrap:anywhere;font-weight:600}.member-profile-actions{display:flex;flex-wrap:wrap;gap:10px}
+.price-verification{display:flex;align-items:center;gap:8px;min-width:260px}.price-verification input{min-width:140px}.price-verification .primary{white-space:nowrap}
+@media(min-width:1101px){.dashboard-stats-reduced{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.dashboard-middle-single{grid-template-columns:1fr}}
+.activity-filters label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.activity-export{margin:12px 0}.activity-action{max-width:500px;overflow-wrap:anywhere}
+/* Identité adaptable : le nom complet reste lisible, même s'il est long. */
+.brand{white-space:normal}.brand-text{display:block;min-width:0;overflow-wrap:anywhere;line-height:1.03}.brand small{letter-spacing:.12em}.member-card-brand{overflow-wrap:anywhere}.prime-popup-kicker{overflow-wrap:anywhere}
+/* Messages intégrés au design system : fond neutre, accent jaune, état lisible. */
+.notice,.error{position:relative;display:flex;align-items:flex-start;gap:14px;padding:17px 20px;border:1px solid var(--border-strong);border-left:4px solid var(--accent);border-radius:var(--r);background:var(--card);color:var(--text);box-shadow:var(--shadow);font-size:14px;line-height:1.55;font-weight:500;animation:pop .3s var(--ease)}
+.notice::before,.error::before{content:'i';display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:var(--r-sm);background:var(--grad-soft);border:1px solid rgba(255,212,0,.3);color:var(--accent-text);font:800 19px/1 var(--font-display)}
+.notice strong,.error strong{display:inline-block;color:var(--text);font:700 17px/1.2 var(--font-display);letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px}
+.notice[data-notification=success]::before{content:'✓';color:var(--ok-text);background:var(--ok-bg);border-color:var(--ok)}
+.notice[data-notification=warning]::before{content:'!';color:var(--warn-text);background:var(--warn-bg);border-color:var(--warn)}
+.error::before{content:'!';color:var(--err-text);background:var(--err-bg);border-color:var(--err)}
+.prime-popup{border:1px solid var(--border-strong);border-radius:var(--r);box-shadow:0 28px 90px rgba(0,0,0,.5),6px 6px 0 rgba(255,212,0,.12)}
+.prime-popup-accent{height:4px;background:var(--accent)}.prime-popup-inner{padding:30px 32px 32px}.prime-popup-head{margin-bottom:18px}
+.prime-popup h2{font-size:32px;letter-spacing:.02em}.prime-popup p{line-height:1.65}.prime-popup-kicker{letter-spacing:.12em}
+@media(max-width:480px){.notice,.error{padding:14px;gap:10px}.prime-popup-inner{padding:22px}.prime-popup h2{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.notice,.error{animation:none}}
+.notice[hidden],.error[hidden]{display:none!important}

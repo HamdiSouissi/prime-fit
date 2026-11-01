@@ -1,5 +1,27 @@
 <?php
+require_once __DIR__ . '/../services/MemberCardMailer.php';
+require_once __DIR__ . '/../services/SubscriptionService.php';
+require_once __DIR__ . '/../services/MemberProfile.php';
+require_once __DIR__ . '/../services/SubscriptionLookup.php';
+require_once __DIR__ . '/../services/MarketingConsent.php';
 class ManagementController {
+    public static function missingQrColumn(PDOException $ex): bool {
+        $info = $ex->errorInfo ?? [];
+        return ($info[0] ?? '') === '42S22' && (int)($info[1] ?? 0) === 1054
+            && stripos((string)($info[2] ?? ''), 'qr_token') !== false;
+    }
+    private function sendCardEmail(array $member): string {
+        global $config;
+        $status = (new MemberCardMailer(array_merge($config['mail'] ?? [], ['gym_name'=>gym_name()])))->send($member);
+        $messages = [
+            'accepted' => 'Carte QR acceptée par le serveur de messagerie pour envoi (livraison non garantie).',
+            'not_configured' => 'E-mail non envoyé : configurez la messagerie dans app/config/local.php.',
+            'missing_email' => 'E-mail non envoyé : aucune adresse valide pour ce membre.',
+            'missing_qr' => 'E-mail non envoyé : générez d’abord la carte QR.',
+            'failed' => 'E-mail non envoyé : vérifiez la configuration du serveur de messagerie puis réessayez.',
+        ];
+        return $messages[$status];
+    }
     private function canWrite(): bool { return in_array($_SESSION['user']['role'], ['Admin', 'Gérant', 'Réceptionniste'], true); }
     private function requireWrite(): void { if (!$this->canWrite()) { http_response_code(403); exit('Accès interdit.'); } }
     private function log(string $action): void {
@@ -12,22 +34,59 @@ class ManagementController {
             verify_csrf(); $this->requireWrite();
             $id = filter_var($_POST['id'] ?? 0, FILTER_VALIDATE_INT, ['options'=>['min_range'=>0]]);
             $first = trim($_POST['first_name'] ?? ''); $last = trim($_POST['last_name'] ?? '');
-            $phone = trim($_POST['phone'] ?? ''); $email = trim($_POST['email'] ?? ''); $card = trim($_POST['card_number'] ?? '');
+            $phone = trim($_POST['phone'] ?? ''); $email = trim($_POST['email'] ?? '');
             $governorate = trim($_POST['governorate'] ?? ''); $birth = trim($_POST['birth_date'] ?? ''); $status = $_POST['status'] ?? 'active';
-            $editing = compact('id','first','last','phone','email','card','governorate','birth','status');
-            if ($id === false || $first === '' || $last === '' || mb_strlen($first)>100 || mb_strlen($last)>100 || mb_strlen($phone)>30 || mb_strlen($card)>50 || mb_strlen($governorate)>80 || mb_strlen($email)>190 || ($email !== '' && !filter_var($email,FILTER_VALIDATE_EMAIL)) || !in_array($status,['active','inactive','blacklisted'],true) || ($birth !== '' && !self::validDate($birth))) {
-                $error = 'Vérifiez les champs : nom et prénom sont obligatoires, et les coordonnées doivent être valides.';
+            $editing = compact('id','first','last','phone','email','governorate','birth','status');
+            if ($id === false || $first === '' || $last === '' || mb_strlen($first)>100 || mb_strlen($last)>100 || mb_strlen($phone)>30 || mb_strlen($governorate)>80 || mb_strlen($email)>190 || (($email === '' && !$id) || ($email !== '' && !filter_var($email,FILTER_VALIDATE_EMAIL))) || !in_array($status,['active','inactive','blacklisted'],true) || ($birth !== '' && !self::validDate($birth))) {
+                $error = 'Vérifiez les champs : nom, prénom et adresse e-mail valide sont obligatoires pour un nouveau membre.';
             } else {
                 try {
                     if ($id) {
-                        $stmt = db()->prepare('UPDATE members SET first_name=?, last_name=?, phone=?, email=?, card_number=?, governorate=?, birth_date=?, status=? WHERE id=?');
-                        $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$card ?: null,$governorate ?: null,$birth ?: null,$status,$id]);
+                        $pdo=db(); $pdo->beginTransaction();
+                        try {
+                            $stmt=$pdo->prepare('SELECT phone FROM members WHERE id=? FOR UPDATE'); $stmt->execute([$id]); $existing=$stmt->fetch();
+                            if (!$existing) throw new DomainException('Membre introuvable.');
+                            (new MarketingConsent($pdo,(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? ''))->revokeForPhoneChange((int)$id,$existing['phone'],$phone ?: null);
+                            $stmt=$pdo->prepare('UPDATE members SET first_name=?, last_name=?, phone=?, email=?, governorate=?, birth_date=?, status=? WHERE id=?');
+                            $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$governorate ?: null,$birth ?: null,$status,$id]);
+                            $this->log('Fiche membre enregistrée #'.$id); $pdo->commit();
+                        } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
                     } else {
-                        db()->prepare('INSERT INTO members (first_name,last_name,phone,email,card_number,governorate,birth_date,status) VALUES (?,?,?,?,?,?,?,?)')->execute([$first,$last,$phone ?: null,$email ?: null,$card ?: null,$governorate ?: null,$birth ?: null,$status]);
-                        $id = (int)db()->lastInsertId();
+                        $pdo = db(); $pdo->beginTransaction();
+                        try {
+                            // Le numéro est produit côté serveur et garanti unique par l'index SQL.
+                            // En cas de collision, réessayer avec un nouveau numéro et un nouveau QR.
+                            $stmt = $pdo->prepare('INSERT INTO members (first_name,last_name,phone,email,card_number,governorate,birth_date,status,qr_token) VALUES (?,?,?,?,?,?,?,?,?)');
+                            for ($attempt = 0; $attempt < 5; $attempt++) {
+                                $card = 'PF-' . random_int(10000000, 99999999) . random_int(10000000, 99999999);
+                                try {
+                                    $qrToken = bin2hex(random_bytes(32));
+                                    $stmt->execute([$first,$last,$phone ?: null,$email ?: null,$card,$governorate ?: null,$birth ?: null,$status,$qrToken]);
+                                    break;
+                                } catch (PDOException $ex) {
+                                    if ($ex->getCode() !== '23000' || (int)($ex->errorInfo[1] ?? 0) !== 1062 || $attempt === 4) throw $ex;
+                                }
+                            }
+                            $id = (int)$pdo->lastInsertId();
+                            $stmt = $pdo->prepare('SELECT created_at FROM members WHERE id=?'); $stmt->execute([$id]);
+                            $createdAt = $stmt->fetchColumn();
+                            $this->log('Fiche membre et carte QR créées #'.$id);
+                            $pdo->commit();
+                        } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
+                        // L'envoi intervient après le commit : son échec ne supprime pas le membre.
+                        $mailMessage = $this->sendCardEmail(['first_name'=>$first, 'last_name'=>$last, 'email'=>$email, 'card_number'=>$card, 'qr_token'=>$qrToken, 'created_at'=>$createdAt]);
+                        $this->flash('Membre créé. ' . $mailMessage); redirect('member_card&id='.$id);
                     }
-                    $this->log('Fiche membre enregistrée #'.$id); $this->flash('Fiche membre enregistrée.'); redirect('members');
-                } catch (PDOException $ex) { if ($ex->getCode() !== '23000') throw $ex; $error = 'Ce numéro de carte est déjà utilisé.'; }
+                    $this->flash('Fiche membre enregistrée.'); redirect('members');
+                } catch (DomainException $ex) { $error=$ex->getMessage();
+                } catch (PDOException $ex) {
+                    if (self::missingQrColumn($ex)) {
+                        error_log('Migration QR manquante : ' . $ex->getMessage());
+                        $error = 'La base de données doit être mise à jour avant de créer un membre. Après sauvegarde, importez database/member_qr.sql dans la base utilisée par l’application, puis réessayez.';
+                    } elseif ($ex->getCode() === '23000') {
+                        $error = 'Impossible de créer le membre. Veuillez réessayer.';
+                    } else { throw $ex; }
+                }
             }
         } elseif (isset($_GET['edit']) && $canWrite) {
             $stmt = db()->prepare('SELECT * FROM members WHERE id=?'); $stmt->execute([(int)$_GET['edit']]); $member = $stmt->fetch();
@@ -42,6 +101,42 @@ class ManagementController {
         $stmt=db()->prepare('SELECT * FROM members'.$where.' ORDER BY created_at DESC, id DESC LIMIT '.$limit.' OFFSET '.$offset); $stmt->execute($params); $members=$stmt->fetchAll();
         $flash = $_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/members.php';
     }
+    public function memberProfile(): void {
+        $role=$_SESSION['user']['role'];
+        if (!in_array($role,['Admin','Gérant','Réceptionniste','Coach','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        $id=filter_var($_GET['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Membre introuvable.'); }
+        $profile=(new MemberProfile(db()))->get($id,$role);
+        if (!$profile) { http_response_code(404); exit('Membre introuvable.'); }
+        $canWrite=$this->canWrite(); require __DIR__.'/../views/member_profile.php';
+    }
+    public function memberCard(): void {
+        $this->requireWrite();
+        $id = filter_var($_SERVER['REQUEST_METHOD'] === 'POST' ? ($_POST['id'] ?? '') : ($_GET['id'] ?? ''), FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Membre introuvable.'); }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            verify_csrf();
+            $action = $_POST['action'] ?? 'renew';
+            if ($action === 'send_email') {
+                $stmt = db()->prepare('SELECT first_name,last_name,email,card_number,qr_token,created_at FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
+                if (!$member) { http_response_code(404); exit('Membre introuvable.'); }
+                $this->flash($this->sendCardEmail($member)); redirect('member_card&id='.$id);
+            }
+            if ($action !== 'renew') { http_response_code(400); exit('Action invalide.'); }
+            $pdo = db(); $pdo->beginTransaction();
+            try {
+                $stmt=$pdo->prepare('SELECT id FROM members WHERE id=? FOR UPDATE'); $stmt->execute([$id]);
+                if (!$stmt->fetch()) { $pdo->rollBack(); http_response_code(404); exit('Membre introuvable.'); }
+                $pdo->prepare('UPDATE members SET qr_token=? WHERE id=?')->execute([bin2hex(random_bytes(32)),$id]);
+                $this->log('Carte QR émise ou renouvelée membre #'.$id); $pdo->commit();
+                $this->flash('Carte QR créée. Toute carte QR précédente est désormais invalide.'); redirect('member_card&id='.$id);
+            } catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
+        }
+        $stmt=db()->prepare('SELECT id,first_name,last_name,email,card_number,qr_token FROM members WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetch();
+        if (!$member) { http_response_code(404); exit('Membre introuvable.'); }
+        header('Cache-Control: no-store, private'); header('Referrer-Policy: no-referrer');
+        $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/member_card.php';
+    }
     private static function validDate(string $date): bool { $d=DateTimeImmutable::createFromFormat('!Y-m-d',$date); return $d && $d->format('Y-m-d') === $date; }
     public function subscriptions(): void {
         $error=''; $canWrite=$this->canWrite();
@@ -51,26 +146,44 @@ class ManagementController {
                 $name=trim($_POST['name'] ?? ''); $days=filter_var($_POST['duration_days'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>3650]]); $price=str_replace(',','.',trim($_POST['price'] ?? ''));
                 if ($name==='' || mb_strlen($name)>100 || !$days || !preg_match('/^\d{1,7}(\.\d{1,3})?$/',$price)) $error='Vérifiez le nom, la durée et le prix de la formule.';
                 else { db()->prepare('INSERT INTO plans (name,duration_days,price) VALUES (?,?,?)')->execute([$name,$days,$price]); $this->log('Formule créée #'.db()->lastInsertId()); $this->flash('Formule créée.'); redirect('subscriptions'); }
-            } elseif ($action === 'subscription') {
-                $member=filter_var($_POST['member_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $plan=filter_var($_POST['plan_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $start=$_POST['start_date'] ?? '';
-                $stmt=db()->prepare('SELECT duration_days FROM plans WHERE id=? AND is_active=1'); $stmt->execute([$plan ?: 0]); $days=$stmt->fetchColumn();
-                $stmt=db()->prepare("SELECT id FROM members WHERE id=? AND status='active'"); $stmt->execute([$member ?: 0]); $memberExists=$stmt->fetchColumn();
-                if (!$memberExists || !$days || !self::validDate($start)) $error='Sélectionnez un membre actif, une formule et une date valides.';
-                else {
-                    $end=(new DateTimeImmutable($start))->modify('+'.((int)$days-1).' days')->format('Y-m-d');
-                    db()->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,status) VALUES (?,?,?,?,'active')")->execute([$member,$plan,$start,$end]);
-                    $this->log('Abonnement créé #'.db()->lastInsertId()); $this->flash('Abonnement enregistré jusqu’au '.date('d/m/Y',strtotime($end)).'. Aucun paiement n’a été enregistré.'); redirect('subscriptions');
-                }
-            } elseif ($action === 'status') {
-                $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $status=$_POST['status'] ?? '';
-                if (!$id || !in_array($status,['active','frozen','cancelled'],true)) $error='Statut invalide.';
-                else { $stmt=db()->prepare('UPDATE subscriptions SET status=? WHERE id=?'); $stmt->execute([$status,$id]); $this->log('Statut abonnement #'.$id.' : '.$status); $this->flash('Statut mis à jour. Le gel ne prolonge pas automatiquement la date de fin.'); redirect('subscriptions'); }
+            } elseif (in_array($action, ['subscription','freeze','resume','cancel'], true)) {
+                $service=new SubscriptionService(db(), (int)$_SESSION['user']['id'], $_SERVER['REMOTE_ADDR'] ?? '');
+                try {
+                    if ($action==='subscription') {
+                        throw new DomainException('Ce formulaire a changé. Vérifiez le prix avant de confirmer.');
+                    } else {
+                        $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+                        if (!$id) throw new DomainException('Abonnement invalide.');
+                        if ($action==='freeze') { $service->freeze($id); $this->flash('Abonnement gelé à partir d’aujourd’hui.'); }
+                        elseif ($action==='resume') { $result=$service->resume($id); $this->flash('Abonnement réactivé : '.$result['days'].' jour(s) crédité(s), fin le '.date('d/m/Y',strtotime($result['end'])).'.'); }
+                        else { $service->cancel($id); $this->flash('Abonnement annulé. Aucun remboursement n’a été enregistré.'); }
+                    }
+                    redirect('subscriptions');
+                } catch (DomainException $ex) { $error=$ex->getMessage(); }
+                  catch (PDOException $ex) {
+                      $info=$ex->errorInfo ?? [];
+                      if (($info[0] ?? '')==='42S02' && (int)($info[1] ?? 0)===1146 && stripos((string)($info[2] ?? ''),'subscription_freezes')!==false) {
+                          error_log('Migration des gels manquante : '.$ex->getMessage());
+                          $error='La base doit être mise à jour : après sauvegarde, importez database/subscription_freezes.sql dans la base utilisée, puis réessayez.';
+                      } else throw $ex;
+                  }
             } else { http_response_code(400); exit('Action invalide.'); }
         }
         $plans=db()->query('SELECT * FROM plans ORDER BY name')->fetchAll();
+        $promotions=$canWrite ? (new SubscriptionPricing(db()))->available(date('Y-m-d')) : [];
         $members=db()->query("SELECT id,first_name,last_name,card_number FROM members WHERE status='active' ORDER BY last_name,first_name")->fetchAll();
-        $pageNumber=max(1,(int)($_GET['p'] ?? 1)); $total=(int)db()->query('SELECT COUNT(*) FROM subscriptions')->fetchColumn(); $pageNumber=min($pageNumber,max(1,(int)ceil($total/10))); $offset=($pageNumber-1)*10;
-        $subscriptions=db()->query('SELECT s.*,m.first_name,m.last_name,p.name AS plan FROM subscriptions s JOIN members m ON m.id=s.member_id JOIN plans p ON p.id=s.plan_id ORDER BY s.created_at DESC,s.id DESC LIMIT 10 OFFSET '.$offset)->fetchAll();
+        $q=is_string($_GET['q'] ?? null) ? $_GET['q'] : ''; $filter=is_string($_GET['filter'] ?? null) ? $_GET['filter'] : '';
+        $result=(new SubscriptionLookup(db()))->search($q,$filter,(int)($_GET['p'] ?? 1),date('Y-m-d'));
+        $q=$result['query']; $filter=$result['filter']; $total=$result['total']; $pageNumber=$result['page']; $subscriptions=$result['subscriptions'];
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/subscriptions.php';
     }
+    public function subscriptionDetail(): void {
+        if (!in_array($_SESSION['user']['role'],['Admin','Gérant','Réceptionniste','Coach','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        $id=filter_var($_GET['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Abonnement introuvable.'); }
+        $detail=(new SubscriptionLookup(db()))->detail($id,(int)($_GET['p'] ?? 1));
+        if (!$detail) { http_response_code(404); exit('Abonnement introuvable.'); }
+        require __DIR__.'/../views/subscription_detail.php';
+    }
+
 }
