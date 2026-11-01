@@ -111,6 +111,46 @@
       if (!paused && !hovering && !focused && !reducedMotion.matches && !document.hidden && rect.bottom > 0 && rect.top < window.innerHeight) go(1);
     }, 7000);
   });
+  // Banner imagery is decorative; controls are available only after enhancement.
+  const hero = document.querySelector('.hero');
+  if (hero) {
+    const slides = Array.from(hero.querySelectorAll('.hero-slide'));
+    const controls = hero.querySelector('[data-hero-controls]');
+    const previous = hero.querySelector('[data-hero-prev]');
+    const next = hero.querySelector('[data-hero-next]');
+    const toggle = hero.querySelector('[data-hero-toggle]');
+    const count = hero.querySelector('[data-hero-count]');
+    if (slides.length > 1 && controls && previous && next && toggle && count) {
+      controls.hidden = false;
+      let index = 0, paused = false, hovering = false, focused = false;
+      const updateToggle = () => {
+        toggle.hidden = reducedMotion.matches;
+        toggle.setAttribute('aria-label', paused ? 'Activer le défilement de la bannière' : 'Mettre en pause le défilement de la bannière');
+        toggle.innerHTML = paused ? 'LECTURE <span aria-hidden="true">▶</span>' : 'PAUSE <span aria-hidden="true">Ⅱ</span>';
+      };
+      const show = nextIndex => {
+        slides[index].classList.remove('is-active');
+        index = (nextIndex + slides.length) % slides.length;
+        slides[index].classList.add('is-active');
+        count.textContent = `${String(index + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+      };
+      previous.addEventListener('click', () => { paused = true; updateToggle(); show(index - 1); });
+      next.addEventListener('click', () => { paused = true; updateToggle(); show(index + 1); });
+      toggle.addEventListener('click', () => { paused = !paused; updateToggle(); });
+      hero.addEventListener('mouseenter', () => { hovering = true; });
+      hero.addEventListener('mouseleave', () => { hovering = false; });
+      hero.addEventListener('focusin', () => { focused = true; });
+      hero.addEventListener('focusout', event => { if (!hero.contains(event.relatedTarget)) focused = false; });
+      if (reducedMotion.addEventListener) reducedMotion.addEventListener('change', updateToggle);
+      else if (reducedMotion.addListener) reducedMotion.addListener(updateToggle);
+      updateToggle();
+      window.setInterval(() => {
+        const rect = hero.getBoundingClientRect();
+        if (!paused && !hovering && !focused && !reducedMotion.matches && !document.hidden && !document.querySelector('dialog[open]') && rect.bottom > 0 && rect.top < window.innerHeight) show(index + 1);
+      }, 7000);
+    }
+  }
+
   // Native modal supplies focus containment, Escape and focus restoration. Never block without JS.
   const welcome = document.querySelector('.welcome-dialog');
   if (welcome && typeof welcome.showModal === 'function' && !window.location.hash) {
