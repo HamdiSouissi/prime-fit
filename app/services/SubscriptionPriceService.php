@@ -13,7 +13,8 @@ class SubscriptionPriceService {
             if (!$s) throw new DomainException('Abonnement introuvable.');
             if ($s['agreed_price']!==null) throw new DomainException('Le prix de cet abonnement a déjà été fixé et ne peut pas être modifié ici.');
             $stmt=$this->db->prepare('SELECT COALESCE(SUM(amount),0) FROM payments WHERE subscription_id=?'); $stmt->execute([$id]); $paid=(string)$stmt->fetchColumn();
-            if (self::millimes($price)<self::millimes($paid)) throw new DomainException('Le prix est inférieur aux paiements déjà enregistrés. Vérifiez les pièces et régularisez la situation avant de continuer.');
+            $stmt=$this->db->prepare('SELECT COALESCE(SUM(r.amount),0) FROM payment_refunds r JOIN payments p ON p.id=r.payment_id WHERE p.subscription_id=?'); $stmt->execute([$id]); $netPaid=self::millimes($paid)-self::millimes((string)$stmt->fetchColumn());
+            if (self::millimes($price)<$netPaid) throw new DomainException('Le prix est inférieur aux paiements déjà enregistrés. Vérifiez les pièces et régularisez la situation avant de continuer.');
             $this->db->prepare('UPDATE subscriptions SET agreed_price=? WHERE id=?')->execute([$price,$id]);
             $this->db->prepare('INSERT INTO activity_logs (user_id,action,ip_address) VALUES (?,?,?)')->execute([$this->userId,'Prix historique fixé abonnement #'.$id.' : '.$price.' DT',substr($this->ip,0,45)]);
             $this->db->commit();

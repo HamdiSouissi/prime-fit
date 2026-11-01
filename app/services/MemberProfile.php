@@ -16,7 +16,7 @@ class MemberProfile {
             'subscriptions'=>$get('SELECT s.id,s.start_date,s.end_date,s.status,p.name AS plan FROM subscriptions s JOIN plans p ON p.id=s.plan_id WHERE s.member_id=? ORDER BY s.start_date DESC,s.id DESC LIMIT 10'),
             'subscriptionCount'=>$count('subscriptions')];
         if ($payments) {
-            $data['payments']=$get('SELECT id,subscription_id,amount,method,paid_at FROM payments WHERE member_id=? ORDER BY paid_at DESC,id DESC LIMIT 10');
+            $data['payments']=$get('SELECT p.id,p.subscription_id,p.amount,p.method,p.paid_at,(SELECT COALESCE(SUM(r.amount),0) FROM payment_refunds r WHERE r.payment_id=p.id) AS refunded FROM payments p WHERE p.member_id=? ORDER BY p.paid_at DESC,p.id DESC LIMIT 10');
             $data['paymentCount']=$count('payments');
         }
         if ($attendance) {

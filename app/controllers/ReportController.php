@@ -21,7 +21,7 @@ class ReportController {
         $this->requireRole(); $period=$this->period(); $report=(new MonthlyReport(db()))->build($period);
         header('Content-Type: text/csv; charset=UTF-8'); header('Content-Disposition: attachment; filename="rapport-'.$period->format('Y-m').'.csv"'); header('Cache-Control: no-store');
         $output=fopen('php://output','w'); fwrite($output,"\xEF\xBB\xBF");
-        fputcsv($output,['Date','Abonnements (DT)','Boutique (DT)','Dépenses (DT)','Solde (DT)','Passages acceptés','Membres distincts du jour'],';','"','');
+        fputcsv($output,['Date','Abonnements nets (DT)','Boutique (DT)','Dépenses (DT)','Solde (DT)','Passages acceptés','Membres distincts du jour'],';','"','');
         foreach ($report['daily'] as $date=>$row) {
             $format=static fn(int $m): string => number_format($m/1000,3,',','');
             fputcsv($output,[date('d/m/Y',strtotime($date)),$format($row['subscription']),$format($row['shop']),$format($row['expense']),$format($row['subscription']+$row['shop']-$row['expense']),$row['visits'],$row['visitors']],';','"','');

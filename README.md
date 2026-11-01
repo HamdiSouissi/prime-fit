@@ -41,7 +41,7 @@ database/        schema.sql, demo.sql
 
 ## Fonctionnement et limites
 
-Le tableau de bord calcule les membres ayant au moins un abonnement actif non expiré, les encaissements du jour et du mois, les passages acceptés, les échéances à 7 jours et la répartition des formules. Les sommes correspondent uniquement aux paiements d'abonnements enregistrés, hors ventes boutique et dépenses, sans calcul de TVA ni de timbre. Le graphique des encaissements couvre les six derniers mois. Les données de démonstration ne représentent pas une activité réelle.
+Le tableau de bord calcule les membres ayant au moins un abonnement actif non expiré, les encaissements du jour et du mois, les passages acceptés, les échéances à 7 jours et la répartition des formules. Les sommes correspondent aux paiements d'abonnements diminués des remboursements à leur date, hors ventes boutique et dépenses, sans calcul de TVA ni de timbre. Le graphique des encaissements couvre les six derniers mois. Les données de démonstration ne représentent pas une activité réelle.
 
 Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage est échappé, les formulaires sensibles utilisent un jeton CSRF et les mots de passe sont vérifiés avec `password_verify`. Les connexions sont limitées par compte et par adresse IP dans la base, mais cette protection ne remplace pas les défenses serveur contre les attaques distribuées. Les vérifications du mot de passe lors du changement personnel ou de la gestion des comptes restent limitées par session. Les rôles contrôlent les principaux modules ; la gestion des permissions fines reste à développer. Activer HTTPS, sauvegardes, supervision et durcissement serveur avant déploiement. Le tableau de bord masque les encaissements aux Coachs et les passages aux Comptables, et n'interroge pas ces données pour les rôles concernés. Les autres données et permissions des différents modules restent régies par leurs règles propres.
 
@@ -55,7 +55,7 @@ Les rôles Admin, Gérant et Réceptionniste peuvent créer et modifier les memb
 
 ## Paiements et caisse
 
-Admin, Gérant, Réceptionniste et Comptable peuvent accéder à la caisse et enregistrer un paiement partiel sur un abonnement. Le prix fixé à la création de l’abonnement est utilisé pour calculer le solde ; un verrou SQL empêche deux paiements simultanés de dépasser ce montant. Les moyens de paiement tunisiens sont proposés. La caisse affiche les encaissements d’une date, ventilés par moyen, et chaque paiement possède un reçu imprimable (ou enregistrable en PDF via le navigateur). Ce reçu n’est **pas une facture fiscale** : TVA, timbre, numérotation fiscale et informations légales ne sont pas implémentés. Les prix historiques non vérifiés doivent être régularisés avant de nouveaux encaissements ; voir la section dédiée. Les annulations, remboursements et les ventes hors abonnement restent à développer.
+Admin, Gérant, Réceptionniste et Comptable peuvent accéder à la caisse et enregistrer un paiement partiel sur un abonnement. Le prix fixé à la création de l’abonnement est utilisé pour calculer le solde ; un verrou SQL empêche deux paiements simultanés de dépasser ce montant. Les moyens de paiement tunisiens sont proposés. La caisse affiche les encaissements d’une date, ventilés par moyen, et chaque paiement possède un reçu imprimable (ou enregistrable en PDF via le navigateur). Ce reçu n’est **pas une facture fiscale** : TVA, timbre, numérotation fiscale et informations légales ne sont pas implémentés. Les prix historiques non vérifiés doivent être régularisés avant de nouveaux encaissements ; voir la section dédiée. Les remboursements d’abonnement déjà effectués peuvent être enregistrés (voir ci-dessous). La correction ou contrepassation d’un paiement erroné, les avoirs fiscaux et les ventes hors abonnement restent à développer.
 
 ## Accès et présences
 
@@ -97,7 +97,7 @@ Le coût est informatif et ne crée pas de dépense comptable. La suppression ou
 
 Admin, Gérant et Comptable peuvent enregistrer des dépenses payées (loyer, salaires, électricité, eau, maintenance, fournitures, marketing ou autre) et consulter une synthèse mensuelle : paiements d’abonnement, ventes boutique, dépenses et différence. L'export CSV contient toutes les dépenses du mois sélectionné, avec protection des champs texte contre les formules de tableur. Les dépenses sont enregistrées et journalisées dans une transaction.
 
-Cette synthèse est un suivi de trésorerie simplifié, **pas un bilan comptable ou fiscal** : TVA, timbre, écritures comptables, salaires détaillés, remboursements et rapprochement bancaire ne sont pas implémentés. Les coûts saisis dans le module équipements et les commissions coach ne créent pas automatiquement de dépenses : les saisir ici si effectivement payés. Les séances privées ne produisent pas d'encaissement ; les chiffres du dashboard restent limités aux abonnements. La modification, suppression ou contrepassation des dépenses, les pièces justificatives et l'export PDF/Excel natif restent à développer.
+Cette synthèse est un suivi de trésorerie simplifié, **pas un bilan comptable ou fiscal** : TVA, timbre, écritures comptables, salaires détaillés et rapprochement bancaire ne sont pas implémentés. Les remboursements d’abonnement enregistrés sont déduits à leur date ; ceux de la boutique et des séances ne sont pas pris en charge. Les coûts saisis dans le module équipements et les commissions coach ne créent pas automatiquement de dépenses : les saisir ici si effectivement payés. Les séances privées ne produisent pas d'encaissement ; les chiffres du dashboard restent limités aux abonnements. La modification, suppression ou contrepassation des dépenses, les pièces justificatives et l'export PDF/Excel natif restent à développer.
 
 ## Marketing et relances
 
@@ -135,7 +135,7 @@ Un message « accepté par le serveur de messagerie » ne garantit pas la livrai
 
 ## Rapports et statistiques
 
-Admin, Gérant et Comptable peuvent consulter un rapport mensuel : encaissements d’abonnements et ventes boutique, dépenses, solde, passages acceptés et membres distincts. Le tableau quotidien s’exporte en CSV (toutes les dates du mois) et peut être imprimé ou enregistré en PDF via le navigateur. Les montants proviennent des enregistrements existants ; aucune nouvelle migration n’est nécessaire.
+Admin, Gérant et Comptable peuvent consulter un rapport mensuel : encaissements d’abonnements et ventes boutique, dépenses, solde, passages acceptés et membres distincts. Le tableau quotidien s’exporte en CSV (toutes les dates du mois) et peut être imprimé ou enregistré en PDF via le navigateur. Les montants proviennent des enregistrements existants ; les remboursements d’abonnement sont déduits à leur date et nécessitent la migration indiquée ci-dessous sur les bases existantes.
 
 La rétention est une **estimation** : parmi les membres dont le statut est actuellement actif et dont un abonnement actuellement marqué actif couvre au moins un jour du mois précédent, proportion ayant également un abonnement actif couvrant au moins un jour du mois sélectionné. La fréquentation estimée est la proportion des membres actuellement actifs avec un abonnement actif couvrant au moins un jour du mois ayant enregistré au moins un passage accepté durant ce mois. Les statuts historiques et gels ne sont pas reconstitués ; les résultats des mois passés peuvent donc évoluer quand les statuts changent. L'indicateur de fréquentation ne mesure pas la capacité ni le taux d'occupation. Les séances privées sans paiement enregistré sont exclues, et le solde ne constitue pas une comptabilité fiscale. Le graphique requiert Chart.js ; les données restent disponibles dans le tableau sans celui-ci.
 
@@ -193,7 +193,7 @@ Pour tout nouvel abonnement, le prix courant de la formule est figé lors de l'e
 
 **Les anciens prix n'étaient pas historisés : ils ne peuvent pas être reconstitués automatiquement.** La migration les laisse indéterminés et les paiements supplémentaires sur ces abonnements sont bloqués. Admin ou Gérant doit consulter les contrats/justificatifs puis ouvrir « Abonnements → Vérifier les prix historiques » ou le lien équivalent dans la caisse, et saisir le prix convenu pour chaque abonnement. Le prix actuel de la formule est seulement une indication, pas une preuve du prix d'origine. Le prix est fixé une seule fois et journalisé ; si les paiements existants le dépassent, l'application refuse la validation et une vérification manuelle est nécessaire. Les paiements existants et leurs reçus ne sont ni supprimés ni modifiés par la migration.
 
-La correction d'un prix déjà fixé, les remboursements et la régularisation des trop-perçus ne sont pas encore implémentés dans l'interface. Testez le processus et les verrous de concurrence sur MySQL avant utilisation réelle.
+La correction d'un prix déjà fixé et la régularisation des trop-perçus historiques ne sont pas encore implémentées dans l'interface. Les remboursements enregistrés diminuent le montant net payé. Testez le processus et les verrous de concurrence sur MySQL avant utilisation réelle.
 
 ### Gestion des formules
 
@@ -276,3 +276,19 @@ DELETE FROM auth_rate_limits WHERE window_started < UNIX_TIMESTAMP() - 86400;
 ```
 
 Ne videz pas les compteurs actifs pendant une attaque. Les tests automatisés utilisent SQLite ; les verrous concurrents, la migration MySQL et le comportement derrière votre serveur Laragon doivent encore être vérifiés en conditions réelles.
+
+### Remboursements d’abonnement enregistrés
+
+Sur une base existante, sauvegardez puis importez la nouvelle table dans la base utilisée :
+
+```bash
+mysql -u root -p prime_fit < database/payment_refunds.sql
+```
+
+Remplacez `prime_fit` par le nom réel de votre base. Une nouvelle installation créée avec `schema.sql` possède déjà la table. **Importez cette migration avant d'utiliser la nouvelle version** : les soldes et les écrans financiers y font référence.
+
+Admin, Gérant ou Comptable peut ouvrir le reçu d'un paiement d'abonnement et enregistrer un remboursement total ou partiel **déjà effectué par le moyen du paiement d'origine**, avec motif. L'application ne transfère pas d'argent et ne produit pas de facture ni d'avoir fiscal. Un paiement sans abonnement ne peut pas être remboursé ici. Le cumul ne peut pas dépasser le paiement initial ; l'enregistrement et l'audit sont transactionnels et une double soumission du même formulaire est refusée. Les remboursements ne sont pas modifiables ni supprimables dans l'interface : vérifiez les justificatifs avant confirmation. Pour toute erreur d'enregistrement, conservez les pièces et demandez une régularisation appropriée ; aucune contrepassation automatique n'est encore prévue.
+
+Le paiement original reste visible. Le reçu affiché ultérieurement montre les remboursements et leurs motifs ; un reçu déjà imprimé ou transmis n'est pas mis à jour. Le remboursement diminue le montant net payé et **augmente le solde dû de l'abonnement** ; il ne modifie pas son statut ni son prix. Une annulation ou une remise commerciale doit être traitée séparément. La caisse affiche le brut, les remboursements et le net du jour ; les ventilations par moyen restent brutes. La liste des remboursements du jour affiche les 100 derniers, mais les totaux incluent tous les enregistrements du jour. Le tableau de bord, la trésorerie et les rapports déduisent les remboursements **à la date de leur enregistrement**, qui peut différer de celle du paiement ; leur net peut donc être négatif. Les montants historiques ne reconstituent pas d'éventuels remboursements effectués avant l'installation de cette fonctionnalité.
+
+Les remboursements de boutique et de séances privées, la modification du moyen de remboursement, l'annulation d'une écriture erronée, le rapprochement bancaire et la facturation fiscale restent à développer. Vérifiez la cohérence des fuseaux PHP/MySQL ; les verrous concurrents et la migration doivent encore être testés sur MySQL/Laragon avant utilisation réelle.

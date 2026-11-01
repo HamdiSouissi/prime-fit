@@ -21,8 +21,12 @@ class Dashboard {
             $first=$now->modify('first day of this month'); $start=$first->modify('-5 months'); $end=$first->modify('+1 month');
             $data['today']=(float)$this->scalar('SELECT COALESCE(SUM(amount),0) FROM payments WHERE paid_at>=? AND paid_at<?',[$today,$tomorrow]);
             $data['month']=(float)$this->scalar('SELECT COALESCE(SUM(amount),0) FROM payments WHERE paid_at>=? AND paid_at<?',[$first->format('Y-m-d'),$end->format('Y-m-d')]);
+            $data['today']-=(float)$this->scalar('SELECT COALESCE(SUM(amount),0) FROM payment_refunds WHERE refunded_at>=? AND refunded_at<?',[$today,$tomorrow]);
+            $data['month']-=(float)$this->scalar('SELECT COALESCE(SUM(amount),0) FROM payment_refunds WHERE refunded_at>=? AND refunded_at<?',[$first->format('Y-m-d'),$end->format('Y-m-d')]);
             $monthly=$this->rows("SELECT DATE_FORMAT(paid_at,'%Y-%m') AS period,SUM(amount) AS total FROM payments WHERE paid_at>=? AND paid_at<? GROUP BY period ORDER BY period",[$start->format('Y-m-d'),$end->format('Y-m-d')]);
             $chart=[]; foreach ($monthly as $row) $chart[$row['period']]=(float)$row['total'];
+            $refunds=$this->rows("SELECT DATE_FORMAT(refunded_at,'%Y-%m') AS period,SUM(amount) AS total FROM payment_refunds WHERE refunded_at>=? AND refunded_at<? GROUP BY period ORDER BY period",[$start->format('Y-m-d'),$end->format('Y-m-d')]);
+            foreach ($refunds as $row) $chart[$row['period']]=($chart[$row['period']] ?? 0)-(float)$row['total'];
             $labels=[]; $values=[]; $months=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
             for ($i=0;$i<6;$i++) { $date=$start->modify('+'.$i.' months'); $labels[]=$months[(int)$date->format('n')-1]; $values[]=$chart[$date->format('Y-m')] ?? 0; }
             $data['labels']=$labels; $data['values']=$values;

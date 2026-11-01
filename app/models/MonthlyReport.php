@@ -20,6 +20,8 @@ class MonthlyReport {
             $stmt->execute([$start,$next]);
             foreach ($stmt->fetchAll() as $row) if (isset($daily[$row['day']])) $daily[$row['day']][$key]=(int)round((float)$row['total']*1000);
         }
+        $stmt=$this->db->prepare('SELECT DATE(refunded_at) AS day,SUM(amount) AS total FROM payment_refunds WHERE refunded_at>=? AND refunded_at<? GROUP BY DATE(refunded_at)'); $stmt->execute([$start,$next]);
+        foreach ($stmt->fetchAll() as $row) if (isset($daily[$row['day']])) $daily[$row['day']]['subscription']-=(int)round((float)$row['total']*1000);
         $stmt=$this->db->prepare("SELECT DATE(checked_in_at) AS day,COUNT(*) AS visits,COUNT(DISTINCT member_id) AS visitors FROM attendance WHERE result='accepted' AND checked_in_at>=? AND checked_in_at<? GROUP BY DATE(checked_in_at)");
         $stmt->execute([$start,$next]);
         foreach ($stmt->fetchAll() as $row) if (isset($daily[$row['day']])) { $daily[$row['day']]['visits']=(int)$row['visits']; $daily[$row['day']]['visitors']=(int)$row['visitors']; }

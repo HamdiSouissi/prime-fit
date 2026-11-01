@@ -13,7 +13,9 @@ class SubscriptionPaymentService {
             if (!$sub) throw new DomainException('Abonnement introuvable.');
             if ($sub['agreed_price']===null) throw new DomainException('Prix historique non vérifié : un Admin ou Gérant doit le fixer avant tout encaissement.');
             $stmt=$this->db->prepare('SELECT COALESCE(SUM(amount),0) FROM payments WHERE subscription_id=?'); $stmt->execute([$subscription]);
-            $remaining=SubscriptionPriceService::millimes((string)$sub['agreed_price'])-SubscriptionPriceService::millimes((string)$stmt->fetchColumn());
+            $paid=SubscriptionPriceService::millimes((string)$stmt->fetchColumn());
+            $stmt=$this->db->prepare('SELECT COALESCE(SUM(r.amount),0) FROM payment_refunds r JOIN payments p ON p.id=r.payment_id WHERE p.subscription_id=?'); $stmt->execute([$subscription]);
+            $remaining=SubscriptionPriceService::millimes((string)$sub['agreed_price'])-$paid+SubscriptionPriceService::millimes((string)$stmt->fetchColumn());
             if (SubscriptionPriceService::millimes($amount)>$remaining) throw new DomainException('Le montant dépasse le reste à payer de cet abonnement.');
             $this->db->prepare('INSERT INTO payments (member_id,subscription_id,amount,method) VALUES (?,?,?,?)')->execute([$sub['member_id'],$subscription,$amount,$method]); $id=(int)$this->db->lastInsertId();
             $this->db->prepare('INSERT INTO activity_logs (user_id,action,ip_address) VALUES (?,?,?)')->execute([$this->userId,'Paiement enregistré #'.$id,substr($this->ip,0,45)]);
