@@ -111,4 +111,25 @@
       if (!paused && !hovering && !focused && !reducedMotion.matches && !document.hidden && rect.bottom > 0 && rect.top < window.innerHeight) go(1);
     }, 7000);
   });
+  // Native modal supplies focus containment, Escape and focus restoration. Never block without JS.
+  const welcome = document.querySelector('.welcome-dialog');
+  if (welcome && typeof welcome.showModal === 'function' && !window.location.hash) {
+    let seen = false;
+    try { seen = window.sessionStorage.getItem('horizon-welcome-seen') === '1'; } catch (_) { /* Storage may be unavailable. */ }
+    if (!seen) {
+      window.setTimeout(() => {
+        // Do not interrupt someone who has started navigating, or another open dialog.
+        if (window.location.hash || document.hidden || window.scrollY > 100 || (document.activeElement && document.activeElement !== document.body) || document.querySelector('dialog[open]') || (menu && !menu.hidden)) return;
+        try {
+          welcome.showModal();
+          try { window.sessionStorage.setItem('horizon-welcome-seen', '1'); } catch (_) { /* Optional persistence. */ }
+          welcome.querySelector('[data-welcome-close]').focus();
+        } catch (_) { /* Unsupported or invalid dialog state: leave the page usable. */ }
+      }, 1500);
+    }
+    welcome.querySelectorAll('[data-welcome-close], [data-welcome-link]').forEach(control => {
+      control.addEventListener('click', () => welcome.close());
+    });
+    welcome.addEventListener('click', event => { if (event.target === welcome) welcome.close(); });
+  }
 })();
