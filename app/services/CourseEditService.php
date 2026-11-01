@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/CoachSchedule.php';
+require_once __DIR__.'/MemberSchedule.php';
 /** Modification des cours futurs, sous les mêmes verrous que les réservations. */
 class CourseEditService {
     public function __construct(private PDO $db,private int $userId,private string $ip,private ?DateTimeImmutable $now=null) {}
@@ -38,10 +39,10 @@ class CourseEditService {
             $this->db->prepare('UPDATE courses SET title=?,room_id=?,coach_id=?,starts_at=?,ends_at=?,capacity=? WHERE id=?')->execute([$title,$room,$coach,$start,$end,$capacity,$id]);
             $promoted=0; $available=$capacity-$confirmed;
             if ($capacity>(int)$course['capacity'] && $available>0) {
-                // La priorité reste l'ordre d'inscription ; les membres non éligibles sont ignorés.
-                $stmt=$this->db->prepare("SELECT b.id FROM course_bookings b JOIN members m ON m.id=b.member_id WHERE b.course_id=? AND b.status='waiting' AND m.status='active' AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.member_id=m.id AND s.status='active' AND s.start_date<=DATE(?) AND s.end_date>=DATE(?)) ORDER BY b.created_at,b.id LIMIT ".(int)$available);
-                $stmt->execute([$id,$start,$start]); $waiting=$stmt->fetchAll();
-                foreach ($waiting as $booking) { $this->db->prepare("UPDATE course_bookings SET status='confirmed' WHERE id=? AND status='waiting'")->execute([$booking['id']]); $this->log('Liste d’attente promue réservation #'.$booking['id']); $promoted++; }
+                // Les candidats sont revérifiés sous verrou membre, y compris leurs séances privées.
+                $waiting=(new MemberSchedule($this->db))->promote($id,$start,$end,$available);
+                foreach ($waiting as $bookingId) $this->log('Liste d’attente promue réservation #'.$bookingId);
+                $promoted=count($waiting);
             }
             $this->log('Cours modifié #'.$id); $this->db->commit(); return $promoted;
         } catch (Throwable $ex) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $ex; }
