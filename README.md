@@ -47,7 +47,7 @@ Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage e
 
 ## Étapes suivantes
 
-Fiches membres enrichies (photo et certificat), amélioration des abonnements, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, application des promotions, parrainage, rapports avancés, paramètres avancés et portail membre. Les exports PDF, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
+Fiches membres enrichies (photo et certificat), amélioration des abonnements, facturation fiscale, contrôle d'accès physique, enrichissement des cours, coachs, du suivi sportif, de la boutique et des équipements, comptabilité réglementaire, plafonds et suivi avancé des promotions, parrainage, rapports avancés, paramètres avancés et portail membre. Les exports PDF, notifications, TVA/timbre, gestion multi-salles et arabe/RTL restent à développer.
 
 ## Membres et abonnements
 
@@ -101,7 +101,15 @@ Cette synthèse est un suivi de trésorerie simplifié, **pas un bilan comptable
 
 ## Marketing et relances
 
-Admin et Gérant peuvent créer, activer ou désactiver des codes promotionnels en pourcentage. La Réception peut consulter le catalogue et préparer les relances. Les codes sont **informatifs uniquement** : ils ne sont ni appliqués ni vérifiés lors de la création d'un abonnement ou d'un paiement. Aucun suivi d'utilisation, plafond ou parrainage n'est encore disponible.
+Admin et Gérant peuvent créer, activer ou désactiver des codes promotionnels en pourcentage. Admin, Gérant et Réceptionniste peuvent choisir une promotion active pour une nouvelle adhésion ou un renouvellement. Un récapitulatif présente le prix initial, la réduction et le prix final avant confirmation. Une seule promotion est applicable ; elle doit être active et comprise dans ses dates inclusives **le jour de l’enregistrement**, même si l’abonnement commence plus tard. La formule, la promotion et le prix sont revérifiés transactionnellement à la confirmation ; si les données changent, recommencez. Un seul récapitulatif est actif par session : en ouvrir un autre invalide le précédent. Le code, le libellé, le pourcentage, le prix initial et la réduction sont figés sur le nouvel abonnement et visibles dans son détail. Les anciens contrats et paiements ne sont pas modifiés. La réduction est calculée en millimes entiers, arrondie au millime le plus proche (moitié arrondie vers le haut) ; 100 % et un prix final nul sont permis. PHP 64 bits est requis pour ces calculs. Aucun paiement n’est créé, aucun cumul, plafond, utilisation unique, parrainage ou calcul fiscal n’est prévu.
+
+Pour une base existante, sauvegardez-la, vérifiez que les tables `subscriptions` et `promotions` existent, puis sélectionnez la base dans phpMyAdmin ou exécutez (remplacez `prime_fit` par votre nom de base) :
+
+```sh
+mysql -u root -p prime_fit < database/subscription_discounts.sql
+```
+
+Une nouvelle installation utilise le `schema.sql` à jour. La migration ne reconstitue pas les éventuelles réductions des anciens contrats. Testez l’import et les scénarios concurrents sur votre MySQL avant utilisation en production.
 
 Les anniversaires du mois et abonnements expirant sous sept jours sont affichés uniquement pour les membres actifs ayant une autorisation WhatsApp marketing enregistrée pour leur numéro actuel, jusqu'à 100 lignes par liste. Un numéro tunisien de 8 chiffres, avec ou sans indicatif +216, permet d'ouvrir WhatsApp avec un message prérempli ; le membre du personnel vérifie et envoie lui-même le message. L'autorisation est revérifiée au clic. Aucun envoi automatique, SMS ni historique d'envoi n'est disponible. Voir les limites et la migration ci-dessous.
 

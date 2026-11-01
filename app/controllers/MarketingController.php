@@ -28,7 +28,7 @@ class MarketingController {
                     $discount=str_replace(',','.',trim($_POST['discount_percent'] ?? '')); $start=$_POST['starts_on'] ?? ''; $end=$_POST['ends_on'] ?? '';
                     if (!preg_match('/^[A-Z0-9_-]{3,40}$/D',$code) || $label==='' || mb_strlen($label)>120 || !preg_match('/^\d{1,3}(\.\d{1,2})?$/D',$discount) || (float)$discount<=0 || (float)$discount>100 || !$this->validDate($start) || !$this->validDate($end) || $end<$start) $this->fail('Vérifiez le code (3 à 40 lettres, chiffres, tirets ou underscores), le libellé, le pourcentage et les dates.');
                     $pdo->beginTransaction(); $pdo->prepare('INSERT INTO promotions (code,label,discount_percent,starts_on,ends_on,created_by) VALUES (?,?,?,?,?,?)')->execute([$code,$label,$discount,$start,$end,$_SESSION['user']['id']]);
-                    $id=(int)$pdo->lastInsertId(); $this->audit($pdo,'Promotion créée #'.$id); $pdo->commit(); $_SESSION['flash']='Promotion créée. Elle ne s’applique pas automatiquement aux paiements.';
+                    $id=(int)$pdo->lastInsertId(); $this->audit($pdo,'Promotion créée #'.$id); $pdo->commit(); $_SESSION['flash']='Promotion créée. Elle peut être sélectionnée pour un nouvel abonnement ou un renouvellement.';
                 } elseif ($action==='toggle') {
                     $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $active=$_POST['active'] ?? '';
                     if (!$id || !in_array($active,['0','1'],true)) $this->fail('Action invalide.');

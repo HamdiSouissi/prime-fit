@@ -25,6 +25,8 @@ class SubscriptionLookup {
         $stmt=$this->db->prepare("SELECT COUNT(*),COALESCE(SUM(CASE WHEN state='open' THEN 1 ELSE 0 END),0) FROM subscription_freezes WHERE subscription_id=?"); $stmt->execute([$id]); $counts=$stmt->fetch(PDO::FETCH_NUM); $total=(int)$counts[0];
         $page=min(max(1,$page),max(1,(int)ceil($total/10))); $offset=($page-1)*10;
         $stmt=$this->db->prepare('SELECT f.frozen_on,f.resumed_on,f.credited_days,f.state,u.name AS created_name,c.name AS closed_name FROM subscription_freezes f LEFT JOIN users u ON u.id=f.created_by LEFT JOIN users c ON c.id=f.closed_by WHERE f.subscription_id=? ORDER BY f.frozen_on DESC,f.id DESC LIMIT 10 OFFSET '.$offset); $stmt->execute([$id]);
-        return ['subscription'=>$subscription,'freezes'=>$stmt->fetchAll(),'total'=>$total,'page'=>$page,'openCount'=>(int)$counts[1]];
+        $freezes=$stmt->fetchAll();
+        $stmt=$this->db->prepare('SELECT code,label,base_price,discount_percent,discount_amount FROM subscription_discounts WHERE subscription_id=?'); $stmt->execute([$id]); $discount=$stmt->fetch() ?: null;
+        return ['subscription'=>$subscription,'discount'=>$discount,'freezes'=>$freezes,'total'=>$total,'page'=>$page,'openCount'=>(int)$counts[1]];
     }
 }

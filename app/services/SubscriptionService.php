@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/PlanService.php';
+require_once __DIR__.'/SubscriptionPricing.php';
 /** Les créations, renouvellements et gels sont sérialisés par membre puis abonnement. */
 class SubscriptionService {
     private PDO $db; private int $userId; private string $ip; private DateTimeImmutable $today;
@@ -38,26 +39,31 @@ class SubscriptionService {
         $stmt=$this->db->prepare("SELECT id FROM subscriptions WHERE member_id=? AND status='active' AND start_date<=? AND end_date>=? AND id<>? LIMIT 1"); $stmt->execute([$member,$end,$start,$exclude ?? 0]);
         if ($stmt->fetch()) $this->fail('Les dates chevauchent un autre abonnement actif de ce membre.');
     }
-    private function insert(int $member,int $plan,string $start,?int $renewedFrom=null,?string $expectedPlan=null): array {
-        $stmt=$this->db->prepare('SELECT id,name,duration_days,price,is_active FROM plans WHERE id=? AND is_active=1 FOR UPDATE'); $stmt->execute([$plan]); $planData=$stmt->fetch(); $days=$planData['duration_days'] ?? 0;
-        if (!$days || (int)$days<1 || (int)$days>3650) $this->fail('Formule inactive ou invalide.');
-        if ($expectedPlan!==null && !hash_equals(PlanService::version($planData),$expectedPlan)) $this->fail('La formule a changé depuis l’ouverture de la page. Vérifiez son prix et sa durée avant de continuer.');
+    private function insert(int $member,int $plan,string $start,?int $renewedFrom=null,?string $expectedPlan=null,?int $promotionId=null,?string $promotionVersion=null,?string $expectedPrice=null): array {
+        // Ordre de verrouillage partagé : membre, abonnement éventuel, formule, promotion.
+        $quote=(new SubscriptionPricing($this->db))->quote($plan,$expectedPlan,$promotionId,$promotionVersion,$this->today->format('Y-m-d'),true);
+        $planData=$quote['plan']; $days=(int)$planData['duration_days'];
+        if ($expectedPrice!==null && !hash_equals($quote['price'],$expectedPrice)) $this->fail('Le prix a changé. Vérifiez le récapitulatif avant de continuer.');
         $date=DateTimeImmutable::createFromFormat('!Y-m-d',$start);
         if (!$date || $date->format('Y-m-d')!==$start || $start<'1900-01-01' || $start>'2099-12-31') $this->fail('Date de début invalide.');
         $end=$date->modify('+'.((int)$days-1).' days')->format('Y-m-d');
         if ($end>'2099-12-31') $this->fail('La date de fin dépasse la limite autorisée.');
         $this->ensureNoOverlap($member,$start,$end);
-        $stmt=$this->db->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,agreed_price,status) VALUES (?,?,?,?,?,'active')"); $stmt->execute([$member,$plan,$start,$end,$planData['price']]);
+        $stmt=$this->db->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,agreed_price,status) VALUES (?,?,?,?,?,'active')"); $stmt->execute([$member,$plan,$start,$end,$quote['price']]);
         $id=(int)$this->db->lastInsertId();
+        if ($quote['promotion']) {
+            $promo=$quote['promotion'];
+            $this->db->prepare('INSERT INTO subscription_discounts (subscription_id,promotion_id,code,label,base_price,discount_percent,discount_amount) VALUES (?,?,?,?,?,?,?)')->execute([$id,$promo['id'],$promo['code'],$promo['label'],$quote['base'],$promo['discount_percent'],$quote['discount']]);
+        }
         $this->log(($renewedFrom ? 'Renouvellement abonnement #'.$renewedFrom.' vers #' : 'Abonnement créé #').$id);
-        return ['id'=>$id,'start'=>$start,'end'=>$end,'price'=>$planData['price']];
+        return ['id'=>$id,'start'=>$start,'end'=>$end,'price'=>$quote['price']];
     }
-    public function create(int $member,int $plan,string $start,?string $expectedPlan=null): array {
-        return $this->atomic(function() use ($member,$plan,$start,$expectedPlan) { $this->lockMember($member); return $this->insert($member,$plan,$start,null,$expectedPlan); });
+    public function create(int $member,int $plan,string $start,?string $expectedPlan=null,?int $promotionId=null,?string $promotionVersion=null,?string $expectedPrice=null): array {
+        return $this->atomic(function() use ($member,$plan,$start,$expectedPlan,$promotionId,$promotionVersion,$expectedPrice) { $this->lockMember($member); return $this->insert($member,$plan,$start,null,$expectedPlan,$promotionId,$promotionVersion,$expectedPrice); });
     }
-    public function renew(int $id,?string $expectedPlan=null,?int $selectedPlan=null,?string $expectedSubscription=null,?string $expectedStart=null): array {
+    public function renew(int $id,?string $expectedPlan=null,?int $selectedPlan=null,?string $expectedSubscription=null,?string $expectedStart=null,?int $promotionId=null,?string $promotionVersion=null,?string $expectedPrice=null): array {
         $member=$this->subscriptionMember($id);
-        return $this->atomic(function() use ($id,$member,$expectedPlan,$selectedPlan,$expectedSubscription,$expectedStart) {
+        return $this->atomic(function() use ($id,$member,$expectedPlan,$selectedPlan,$expectedSubscription,$expectedStart,$promotionId,$promotionVersion,$expectedPrice) {
             $s=$this->lockSubscription($id,$member); $this->lockMember($member);
             if ($expectedSubscription!==null && !hash_equals(self::version($s),$expectedSubscription)) $this->fail('L’abonnement a changé depuis l’ouverture de la page. Vérifiez ses informations avant de continuer.');
             if ($s['status']==='frozen') $this->fail('Réactivez ou annulez cet abonnement avant de le renouveler.');
@@ -65,7 +71,7 @@ class SubscriptionService {
             if ($selectedPlan!==null && $selectedPlan<1) $this->fail('Formule invalide.');
             $start=max($this->today->format('Y-m-d'),(new DateTimeImmutable($s['end_date']))->modify('+1 day')->format('Y-m-d'));
             if ($expectedStart!==null && $expectedStart!==$start) $this->fail('La date de début a changé. Vérifiez le renouvellement avant de continuer.');
-            return $this->insert($member,$selectedPlan ?? (int)$s['plan_id'],$start,$id,$expectedPlan);
+            return $this->insert($member,$selectedPlan ?? (int)$s['plan_id'],$start,$id,$expectedPlan,$promotionId,$promotionVersion,$expectedPrice);
         });
     }
     public function freeze(int $id): void {

@@ -21,6 +21,7 @@ require __DIR__ . '/../app/controllers/ReportController.php';
 require __DIR__ . '/../app/controllers/SettingsController.php';
 require __DIR__ . '/../app/controllers/SubscriptionPriceController.php';
 require __DIR__ . '/../app/controllers/SubscriptionRenewController.php';
+require __DIR__ . '/../app/controllers/SubscriptionQuoteController.php';
 require __DIR__ . '/../app/controllers/PlanController.php';
 require __DIR__ . '/../app/controllers/ActivityController.php';
 require __DIR__ . '/../app/controllers/UserAdminController.php';
@@ -48,6 +49,7 @@ try {
     elseif ($page === 'member_card') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberCard(); }
     elseif ($page === 'plan') { if (!isset($_SESSION['user'])) redirect('login'); (new PlanController())->index(); }
     elseif ($page === 'subscription_detail') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->subscriptionDetail(); }
+    elseif ($page === 'subscription_quote') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionQuoteController())->index(); }
     elseif ($page === 'subscription_renew') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionRenewController())->index(); }
     elseif ($page === 'subscription_prices') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionPriceController())->index(); }
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }
@@ -80,6 +82,8 @@ try {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_name.sql dans la base utilisée, puis réessayez.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'marketing_consent_events') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/marketing_consent.sql dans la base utilisée.';
+    } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'subscription_discounts') !== false) {
+        echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_discounts.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'payment_refunds') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/payment_refunds.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'agreed_price') !== false) {

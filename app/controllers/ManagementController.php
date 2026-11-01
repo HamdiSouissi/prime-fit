@@ -150,11 +150,7 @@ class ManagementController {
                 $service=new SubscriptionService(db(), (int)$_SESSION['user']['id'], $_SERVER['REMOTE_ADDR'] ?? '');
                 try {
                     if ($action==='subscription') {
-                        $member=filter_var($_POST['member_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
-                        $selection=$_POST['plan_id'] ?? ''; $start=$_POST['start_date'] ?? '';
-                        if (!$member || !is_string($selection) || !preg_match('/^(\d+)\|([a-f0-9]{64})$/D',$selection,$matches) || !is_string($start) || (int)$matches[1]<1) throw new DomainException('Sélectionnez un membre, une formule et une date valides.');
-                        $created=$service->create($member,(int)$matches[1],$start,$matches[2]);
-                        $this->flash('Abonnement enregistré jusqu’au '.date('d/m/Y',strtotime($created['end'])).', prix fixé : '.dt($created['price']).'. Aucun paiement n’a été enregistré.');
+                        throw new DomainException('Ce formulaire a changé. Vérifiez le prix avant de confirmer.');
                     } else {
                         $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
                         if (!$id) throw new DomainException('Abonnement invalide.');
@@ -174,6 +170,7 @@ class ManagementController {
             } else { http_response_code(400); exit('Action invalide.'); }
         }
         $plans=db()->query('SELECT * FROM plans ORDER BY name')->fetchAll();
+        $promotions=$canWrite ? (new SubscriptionPricing(db()))->available(date('Y-m-d')) : [];
         $members=db()->query("SELECT id,first_name,last_name,card_number FROM members WHERE status='active' ORDER BY last_name,first_name")->fetchAll();
         $q=is_string($_GET['q'] ?? null) ? $_GET['q'] : ''; $filter=is_string($_GET['filter'] ?? null) ? $_GET['filter'] : '';
         $result=(new SubscriptionLookup(db()))->search($q,$filter,(int)($_GET['p'] ?? 1),date('Y-m-d'));
