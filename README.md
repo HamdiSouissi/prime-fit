@@ -361,6 +361,18 @@ DELETE FROM auth_rate_limits WHERE window_started < UNIX_TIMESTAMP() - 86400;
 
 Ne videz pas les compteurs actifs pendant une attaque. Les tests automatisés utilisent SQLite ; les verrous concurrents, la migration MySQL et le comportement derrière votre serveur Laragon doivent encore être vérifiés en conditions réelles.
 
+### Réparation ciblée des moyens de paiement mal encodés
+
+Si `SHOW FULL COLUMNS FROM payments WHERE Field = 'method'` révèle les valeurs `esp├¿ces` et `ch├¿que` (import UTF-8 interprété en CP437/CP850), la migration `database/repair_payment_methods_encoding.sql` ajoute les valeurs françaises correctes à l'ENUM puis corrige uniquement ces deux libellés dans les paiements existants, sans changer leurs identifiants, montants, dates ou références. Elle refuse une définition différente de celle attendue et est reprenable si elle a été interrompue après l'extension de l'ENUM. Les anciennes valeurs restent acceptées pour éviter une conversion destructive.
+
+**Avant l'import : sauvegarder la base et interrompre les écritures sur les paiements.** Un `ALTER TABLE` entraîne un commit implicite et ne peut pas être annulé par un rollback. Dans phpMyAdmin, sélectionnez la base de l'application et importez le fichier **en UTF-8** ; ou depuis la racine du projet :
+
+```bash
+mysql --default-character-set=utf8mb4 -u root -p prime_fit < database/repair_payment_methods_encoding.sql
+```
+
+Remplacez `prime_fit` par votre base réelle. Vérifiez le message final : en cas de refus, ne forcez pas la modification et transmettez la définition complète de la colonne. Après succès, vérifiez la caisse, les reçus et la colonne `method` avant un nouvel encaissement. Cette réparation doit être validée sur MySQL/Laragon ; elle ne corrige pas d'autres tables mal encodées.
+
 ### Diagnostic d’un paiement
 
 En cas d’erreur SQL pendant l’enregistrement, la caisse indique l’étape, le SQLSTATE et le code de la base, sans afficher les données SQL brutes. Le détail est enregistré dans le journal PHP configuré pour Apache. L’encaissement et son journal sont effectués dans la même transaction ; en cas d’échec de la confirmation de transaction, le résultat peut être incertain. Vérifiez toujours la caisse et les reçus avant de retenter, pour éviter un doublon. Si une incompatibilité de colonne est signalée, inspectez la structure de `payments` dans la base réelle plutôt que de modifier ou réimporter son schéma sans sauvegarde. Ces informations de diagnostic ne corrigent pas à elles seules un problème propre à une installation.
