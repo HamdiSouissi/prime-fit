@@ -18,9 +18,9 @@ $summary=implode(' · ',$summaryParts).'.';
 $colors = ['#FFD400', '#EF4444', '#9CA3AF', '#22C55E'];
 ?>
 <section class="hero" aria-label="Résumé du jour"><div class="hero-copy"><h1>Bonjour, <?= e($first) ?></h1><p class="hero-summary"><?= e($summary) ?></p><div class="hero-actions">
-<?php if (in_array($role, ['Admin','Gérant','Réceptionniste','Comptable'], true)): ?><a class="btn btn-primary" href="index.php?page=payments"><i data-lucide="wallet-cards"></i>Enregistrer un paiement</a><?php endif; ?>
-<?php if (in_array($role, ['Admin','Gérant','Réceptionniste'], true)): ?><a class="btn btn-outline" href="index.php?page=attendance"><i data-lucide="scan-line"></i>Pointer un membre</a><?php endif; ?>
-<a class="btn btn-outline" href="index.php?page=members"><i data-lucide="users-round"></i>Voir les membres</a></div></div>
+<?php if (in_array($role, ['Admin','Gérant','Réceptionniste','Comptable'], true)): ?><a class="btn btn-primary" href="payments"><i data-lucide="wallet-cards"></i>Enregistrer un paiement</a><?php endif; ?>
+<?php if (in_array($role, ['Admin','Gérant','Réceptionniste'], true)): ?><a class="btn btn-outline" href="attendance"><i data-lucide="scan-line"></i>Pointer un membre</a><?php endif; ?>
+<a class="btn btn-outline" href="members"><i data-lucide="users-round"></i>Voir les membres</a></div></div>
 <?php if ($canFinance): ?><div class="hero-panel"><span>Encaissements nets abonnements · mois</span><strong><?= e(dt($data['month'])) ?></strong>
 <svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none" role="img" aria-label="Encaissements des abonnements sur six mois"><defs><linearGradient id="sparkStroke" x1="0" x2="1"><stop offset="0" stop-color="#FFD400"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient><linearGradient id="sparkFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#FFD400" stop-opacity=".28"/><stop offset="1" stop-color="#FFD400" stop-opacity="0"/></linearGradient></defs><polygon class="area" points="<?= e($area) ?>"/><polyline class="line" points="<?= e($line) ?>"/></svg>
 <div class="spark-labels"><?php foreach ($data['labels'] as $l): ?><span><?= e($l) ?></span><?php endforeach; ?></div></div><?php else: ?><div class="hero-panel"><span>Membres actifs</span><strong><?= (int)$data['active'] ?></strong><p>Avec un abonnement en cours</p></div><?php endif; ?></section>

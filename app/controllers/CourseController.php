@@ -90,7 +90,7 @@ class CourseController {
         $courses=$result['courses'];
         // On conserve les filtres pour consulter une fiche et parcourir les pages.
         $courseUrl=static function(array $extra=[]) use ($filters,$result): string {
-            return 'index.php?'.http_build_query(array_merge(['page'=>'courses','filter'=>'1'],$filters,['p'=>$result['page']],$extra));
+            return 'courses?'.http_build_query(array_merge(['filter'=>'1'],$filters,['p'=>$result['page']],$extra));
         };
         $selected=filter_var($_GET['course'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $selectedCourse=null; $bookings=[];
         if ($selected) {

@@ -37,5 +37,6 @@ function gym_brand_markup(): string {
     $parts=preg_split('/\s+/u',gym_name(),2); $first=e($parts[0]); $rest=isset($parts[1]) ? ' <span class="brand-gold">'.e($parts[1]).'</span>' : '';
     return $first.$rest.'<small>CLUB DE SPORT</small>';
 }
-function redirect(string $route): void { header('Location: index.php?page=' . $route); exit; }
+require_once __DIR__.'/UrlRouter.php';
+function redirect(string $route): void { header('Location: '.UrlRouter::redirectTarget($route)); exit; }
 function dt($amount): string { return number_format((float)$amount, 3, ',', ' ') . ' DT'; }

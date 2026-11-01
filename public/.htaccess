@@ -1,0 +1,5 @@
+# DocumentRoot doit pointer vers public/ ; activer mod_rewrite et AllowOverride.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^[a-z][a-z0-9_]*$ index.php [L,QSA]

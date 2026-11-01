@@ -15,7 +15,7 @@ require __DIR__.'/../app/controllers/MarketingController.php';
 $_SESSION=['user'=>['id'=>1,'name'=>'Admin','role'=>'Admin']]; $_GET=[]; $_POST=[]; $_SERVER['REQUEST_METHOD']='GET';
 ob_start(); (new MarketingController())->index(); $html=ob_get_clean();
 if (substr_count($html,'Autorise Test')!==2 || str_contains($html,'Retire Test') || str_contains($html,'Absent Test') || str_contains($html,'Change Test') || str_contains($html,'Inactif Test')) throw new RuntimeException('Filtre de consentement insuffisant');
-if (!str_contains($html,'page=marketing_whatsapp&amp;kind=birthday&amp;id=1') || !str_contains($html,'page=marketing_whatsapp&amp;kind=expiry&amp;id=1') || str_contains($html,'wa.me/')) throw new RuntimeException('Les liens doivent être revérifiés sur le serveur');
+if (!str_contains($html,'marketing_whatsapp?kind=birthday&amp;id=1') || !str_contains($html,'marketing_whatsapp?kind=expiry&amp;id=1') || str_contains($html,'wa.me/')) throw new RuntimeException('Les liens doivent être revérifiés sur le serveur');
 if (!str_starts_with((string)MarketingController::whatsapp('+216 12 345 678','Bonjour'),'https://wa.me/21612345678?text=') || MarketingController::whatsapp('123','X')!==null) throw new RuntimeException('Numéro non validé');
 $controller=new MarketingController();
 if (!$controller->resolveWhatsapp(1,'birthday') || !$controller->resolveWhatsapp(1,'expiry') || $controller->resolveWhatsapp(2,'birthday')!==null || $controller->resolveWhatsapp(3,'expiry')!==null || $controller->resolveWhatsapp(4,'birthday')!==null) throw new RuntimeException('Vérification au clic incorrecte');

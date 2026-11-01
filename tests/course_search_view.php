@@ -6,7 +6,7 @@ function gym_brand_markup(): string { return 'Salle'; }
 function csrf(): string { return 'test'; }
 $_SESSION=['user'=>['id'=>1,'name'=>'Coach','role'=>'Coach']]; $_POST=[]; $error=''; $flash=''; $canWrite=false;
 $filters=['q'=>'<test>&','from'=>'2026-01-01','to'=>'','status'=>'scheduled']; $filterError=''; $result=['total'=>21,'page'=>1,'pages'=>2];
-$courseUrl=static fn(array $extra=[])=>'index.php?'.http_build_query(array_merge(['page'=>'courses','filter'=>'1'],$filters,['p'=>$result['page']],$extra));
+$courseUrl=static fn(array $extra=[])=>'courses?'.http_build_query(array_merge(['filter'=>'1'],$filters,['p'=>$result['page']],$extra));
 $selectedCourse=null; $rooms=[]; $coaches=[]; $members=[]; $bookings=[];
 $courses=[['id'=>7,'title'=>'<Yoga>','starts_at'=>'2030-01-01 23:00:00','ends_at'=>'2030-01-02 00:30:00','room'=>'Studio','coach'=>'Nadia','confirmed'=>0,'waiting'=>0,'capacity'=>10,'status'=>'scheduled']];
 ob_start(); require __DIR__.'/../app/views/courses.php'; $html=ob_get_clean();

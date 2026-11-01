@@ -8,7 +8,7 @@ class SubscriptionQuoteController {
         if (!in_array($_SESSION['user']['role'],['Admin','Gérant','Réceptionniste'],true)) { http_response_code(403); exit('Accès interdit.'); }
         if ($_SERVER['REQUEST_METHOD']!=='POST') { http_response_code(405); exit('Méthode non autorisée.'); }
         verify_csrf(); $error=''; $quote=null; $mode=$_POST['mode'] ?? ''; $phase=$_POST['phase'] ?? '';
-        $back='index.php?page=subscriptions';
+        $back='subscriptions';
         try {
             if (!is_string($mode) || !in_array($mode,['create','renew'],true) || !is_string($phase) || !in_array($phase,['quote','confirm'],true)) throw new DomainException('Formulaire invalide.');
             $planValue=$_POST['plan'] ?? ''; $promotionValue=$_POST['promotion'] ?? ''; $start=$_POST['start'] ?? '';
@@ -25,7 +25,7 @@ class SubscriptionQuoteController {
             } else {
                 $subId=filter_var($_POST['subscription_id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $subVersion=$_POST['subscription_version'] ?? '';
                 if (!$subId || !is_string($subVersion) || !preg_match('/^[a-f0-9]{64}$/D',$subVersion)) throw new DomainException('Abonnement invalide.');
-                $back='index.php?page=subscription_renew&id='.$subId;
+                $back='subscription_renew?id='.$subId;
             }
             $pdo=db(); $service=new SubscriptionService($pdo,(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? '');
             if ($phase==='confirm') {

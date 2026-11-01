@@ -6,7 +6,7 @@ $bodyClass = 'member-card-page';
 require __DIR__.'/management_header.php';
 ?>
 <div class="member-card-actions no-print">
-  <a class="text-link" href="index.php?page=members">← Retour aux membres</a>
+  <a class="text-link" href="members">← Retour aux membres</a>
   <?php if ($member['qr_token']): ?>
     <button type="button" class="primary" id="print-card">Imprimer / enregistrer en PDF</button>
     <button type="button" class="scanner-stop" id="download-qr">Télécharger le QR</button>
@@ -29,7 +29,7 @@ require __DIR__.'/management_header.php';
     <h3>Votre carte QR</h3>
     <p>Ce QR est personnel : une copie peut être utilisée pour pointer. En cas de perte, renouvelez-le et imprimez la nouvelle carte.</p>
     <?php if ($member['qr_token']): ?>
-    <form method="post" action="index.php?page=member_card">
+    <form method="post" action="member_card">
       <input type="hidden" name="csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= (int)$member['id'] ?>">
       <input type="hidden" name="action" value="send_email">
@@ -37,7 +37,7 @@ require __DIR__.'/management_header.php';
       <p>Adresse : <?= e($member['email'] ?: 'non renseignée') ?></p>
     </form>
     <?php endif; ?>
-    <form method="post" action="index.php?page=member_card">
+    <form method="post" action="member_card">
       <input type="hidden" name="csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= (int)$member['id'] ?>">
       <button class="primary" type="submit" <?= $member['qr_token'] ? 'data-confirm="Renouveler ce QR ? L’ancien code ne fonctionnera plus." onclick="return confirm(&quot;Renouveler ce QR ? L’ancien code ne fonctionnera plus.&quot;)"' : '' ?>><?= $member['qr_token'] ? 'Renouveler le QR' : 'Générer le QR de ce membre' ?></button>

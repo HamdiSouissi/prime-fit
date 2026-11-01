@@ -22,7 +22,19 @@ PHP 8.0+ avec extensions PDO MySQL, mbstring et zlib, MySQL 8 ou MariaDB compati
 12. Démarrer Apache et MySQL et ouvrir `http://localhost/prime-fit/public/` ou, si le document root pointe sur `public/`, l'URL du site.
 13. Compte de démonstration : `admin@primefit.tn` / `PrimeFit2026!`. **Ne jamais utiliser ce compte en production** : supprimer le jeu de démo et créer un administrateur avec un mot de passe robuste et `password_hash()` avant mise en ligne.
 
-Pour un essai local : `php -S 0.0.0.0:8000 -t public` (après configuration de MySQL).
+### Adresses des pages (Laragon / Apache)
+
+Les pages utilisent des adresses comme `http://prime-fit.test/attendance` au lieu de `index.php?page=attendance`. Les filtres et identifiants restent dans la chaîne de paramètres, par exemple `/attendance?date=2026-01-01` ou `/member_card?id=12`. Les anciennes adresses GET sont redirigées vers leur équivalent ; les anciens formulaires POST restent acceptés sans redirection préalable.
+
+Dans Laragon, le document root du site doit viser le dossier `public` du projet. Le fichier `public/.htaccess` nécessite le module Apache `mod_rewrite` et `AllowOverride All` (ou au minimum `AllowOverride FileInfo`) pour ce dossier. Vérifiez la configuration du virtual host si `/attendance` renvoie 404, puis redémarrez Apache. Ne définissez pas le document root sur la racine du dépôt : cela exposerait potentiellement `app/` et `database/`. En sous-dossier, les liens restent relatifs au dossier `public`. Les autres serveurs (Nginx, etc.) doivent transmettre les routes inexistantes à `public/index.php` sans réécrire les fichiers statiques.
+
+Pour un essai avec le serveur PHP intégré, après configuration de MySQL, exécuter depuis la racine du projet :
+
+```sh
+php -S 0.0.0.0:8000 -t public router.php
+```
+
+Le serveur PHP intégré n’utilise pas `.htaccess` : le routeur indiqué est nécessaire pour les URL propres. Ne pas utiliser ce serveur en production.
 
 ## Arborescence
 

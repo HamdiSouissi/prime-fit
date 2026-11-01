@@ -26,7 +26,13 @@ require __DIR__ . '/../app/controllers/SubscriptionQuoteController.php';
 require __DIR__ . '/../app/controllers/PlanController.php';
 require __DIR__ . '/../app/controllers/ActivityController.php';
 require __DIR__ . '/../app/controllers/UserAdminController.php';
-$page = $_GET['page'] ?? (isset($_SESSION['user']) ? 'dashboard' : 'login');
+$resolved=UrlRouter::resolve($_SERVER['REQUEST_URI'] ?? '/index.php',$_SERVER['SCRIPT_NAME'] ?? '/index.php',$_GET,isset($_SESSION['user']));
+$page=$resolved['page'];
+if ($page===null) { http_response_code(404); exit('Page introuvable'); }
+// Les anciens favoris GET restent valides ; les POST existants conservent leur corps.
+if ($resolved['legacy'] && ($_SERVER['REQUEST_METHOD'] ?? 'GET')==='GET') {
+    header('Location: '.UrlRouter::canonical($_SERVER['SCRIPT_NAME'] ?? '/index.php',$page,$_GET),true,302); exit;
+}
 try {
     // Révoque les sessions périmées après changement de mot de passe ou désactivation.
     if (isset($_SESSION['user']) && !in_array($page, ['login','logout'], true)) {
