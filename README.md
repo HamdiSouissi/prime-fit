@@ -441,6 +441,17 @@ Pour une base existante, sauvegardez-la puis exécutez **une seule fois** `mysql
 
 L’espace de gestion et la connexion utilisent le jaune électrique `#E8FF00` de la vitrine. En thème clair, les textes d’accent et les graphiques utilisent une nuance olive plus foncée pour préserver leur lisibilité ; les couleurs de statut (succès, erreur, avertissement) restent distinctes.
 
+## Suppressions protégées
+
+Dans **Suppressions protégées** (ou via les liens des modules Membres, Cours et Coachs), seul l’Admin peut sélectionner jusqu’à 20 éléments sur une page et confirmer avec son mot de passe. Les tentatives sont limitées par compte et adresse IP via `auth_rate_limits`. La sélection est vérifiée à nouveau sous verrou : en cas de modification concurrente, de dépendance bloquante ou d’erreur, **tout le lot est annulé**. Chaque résultat est journalisé dans la même transaction. Une suppression définitive est irréversible : sauvegardez la base et vérifiez la sélection.
+
+- **Membre** : sans compte membre ni données liées, la fiche peut être supprimée. Sinon elle est désactivée pour préserver les abonnements, paiements, présences et autres historiques ; la liste noire est toujours conservée. Les abonnements, inscriptions et réservations existants ne sont pas modifiés automatiquement. La désactivation invalide les invitations et les sessions : en cas de réactivation, le membre déjà activé doit réinitialiser son mot de passe.
+- **Salle** : suppression uniquement si aucun cours ne lui est lié ; sinon l’opération est bloquée pour préserver le planning.
+- **Cours** : un cours futur sans inscription peut être supprimé. S’il possède des inscriptions, il est annulé avec ses inscriptions, dont l’historique est conservé. Les cours commencés ou passés sont conservés. Aucune notification d’annulation n’est envoyée.
+- **Coach** : sans historique ni référence, son compte et son profil peuvent être supprimés. Sinon, il est désactivé et les historiques sont conservés ; il faut d’abord réattribuer ou annuler ses cours en cours/futurs et régulariser ses séances privées planifiées. La désactivation révoque ses sessions et son ancien mot de passe ; un administrateur doit en définir un nouveau en cas de réactivation.
+
+Les vérifications requièrent les tables des modules existants, y compris les historiques ; si l’une est absente ou qu’une contrainte bloque l’opération, le lot est refusé plutôt que d’effacer des données. Ce mécanisme ne constitue pas une procédure complète d’effacement ou d’anonymisation de données personnelles. Vérifiez les dépendances, les sauvegardes et les opérations concurrentes sur MySQL/Laragon avant utilisation réelle.
+
 ## Espace membre
 
 L’espace membre utilise une session et des comptes **distincts** du personnel. Les nouveaux membres actifs reçoivent, en plus de leur carte QR, un e-mail d’invitation si la configuration est complète. Pour inviter un membre existant ou renvoyer un lien non utilisé, Admin peut ouvrir **Membres → Carte QR → Inviter à l’espace membre**. Une nouvelle invitation invalide la précédente. Un compte déjà activé ne peut pas être réinitialisé par cette action. L’envoi a lieu après la création de la fiche : un échec ne supprime pas le membre. L’acceptation par `mail()` ne garantit pas la livraison.

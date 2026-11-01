@@ -25,6 +25,7 @@ $__items = [
     ['settings','settings','settings-2','Paramètres',['Admin','Gérant','Comptable']],
     ['users','users','users-round','Comptes du personnel',['Admin']],
     ['activity','activity','clipboard-list','Journal d’activité',['Admin']],
+    ['removals','removals','trash-2','Suppressions protégées',['Admin']],
     ['account','account','shield-check','Mon compte',null],
 ];
 $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
