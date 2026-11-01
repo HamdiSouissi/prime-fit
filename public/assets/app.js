@@ -143,7 +143,8 @@
       a.href = URL.createObjectURL(blob); a.download = (name || 'export') + '.csv';
       document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
-    tools.append(input, exp);
+    tools.append(input);
+    if (!table.hasAttribute('data-no-client-export')) tools.append(exp);
     scroller.before(tools);
 
     // Tri
