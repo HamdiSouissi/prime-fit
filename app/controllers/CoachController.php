@@ -58,7 +58,7 @@ class CoachController {
                   elseif ($ex->getCode()==='23000') $error='Cette adresse e-mail est déjà utilisée.'; else throw $ex; }
         }
         $onlyOwn=$role==='Coach';
-        $sql='SELECT u.id,u.name,u.email,u.is_active,cp.phone,cp.specialties,cp.commission_rate FROM users u JOIN coach_profiles cp ON cp.user_id=u.id WHERE u.role=\'Coach\''.($onlyOwn ? ' AND u.id=?' : '').' ORDER BY u.name';
+        $sql='SELECT u.id,u.name,u.email,u.role,u.is_active,cp.phone,cp.specialties,cp.commission_rate FROM users u JOIN coach_profiles cp ON cp.user_id=u.id WHERE u.role=\'Coach\''.($onlyOwn ? ' AND u.id=?' : '').' ORDER BY u.name';
         $stmt=$db->prepare($sql); $stmt->execute($onlyOwn ? [$user['id']] : []); $coaches=$stmt->fetchAll();
         $members=$manageSessions ? $db->query("SELECT id,first_name,last_name FROM members WHERE status='active' ORDER BY last_name,first_name")->fetchAll() : [];
         $stmt=$db->prepare('SELECT s.*,u.name AS coach,m.first_name,m.last_name FROM private_sessions s JOIN users u ON u.id=s.coach_id JOIN members m ON m.id=s.member_id'.($onlyOwn ? ' WHERE s.coach_id=?' : '').' ORDER BY s.starts_at DESC LIMIT 100'); $stmt->execute($onlyOwn ? [$user['id']] : []); $sessions=$stmt->fetchAll();

@@ -1,0 +1,10 @@
+const fs=require('fs'); const {JSDOM}=require('jsdom');
+const dom=new JSDOM(`<input id="a" type="checkbox" data-select-group="courses"><input id="a1" type="checkbox" data-selection-group="courses"><input id="a2" type="checkbox" data-selection-group="courses"><input id="b" type="checkbox" data-select-group="rooms"><input id="b1" type="checkbox" data-selection-group="rooms">`,{runScripts:'outside-only'});
+const d=dom.window.document; dom.window.eval(fs.readFileSync('public/assets/bulk-selection.js','utf8'));
+const a=d.querySelector('#a'), a1=d.querySelector('#a1'), a2=d.querySelector('#a2'), b=d.querySelector('#b'), b1=d.querySelector('#b1');
+a.click(); if (!a1.checked || !a2.checked || b1.checked || b.checked) throw new Error('Sélection de groupe incorrecte');
+a1.click(); if (!a.indeterminate || a.checked || !a2.checked) throw new Error('Sélection partielle incorrecte');
+b.click(); if (!b1.checked || a1.checked) throw new Error('Groupes non isolés');
+const member=new JSDOM(`<input id="select-members" type="checkbox"><input type="checkbox" class="member-selection"><input type="checkbox" class="member-selection">`,{runScripts:'outside-only'});
+member.window.eval(fs.readFileSync('public/assets/member-selection.js','utf8')); const all=member.window.document.querySelector('#select-members'); all.click(); if ([...member.window.document.querySelectorAll('.member-selection')].some(e=>!e.checked)) throw new Error('Sélection membres incorrecte');
+console.log('Sélection groupée : groupes indépendants et sélection des membres OK');

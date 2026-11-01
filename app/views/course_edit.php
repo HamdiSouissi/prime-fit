@@ -5,7 +5,7 @@ $field=static function(string $key,$default) use ($keep) { return $keep && is_st
 $editable=$course['status']==='scheduled' && $course['starts_at']>date('Y-m-d H:i:s');
 require __DIR__.'/management_header.php';
 ?>
-<section class="card form-card account-card"><div class="card-head"><div><h3><?= e($course['title']) ?></h3><p><?= $confirmed ?> confirmé(s) · <?= $waiting ?> en attente</p></div><a class="text-link" href="courses?course=<?= (int)$course['id'] ?>">← Inscriptions</a></div>
+<section class="card form-card account-card"><div class="card-head"><div><h3><?= e($course['title']) ?></h3><p><?= $confirmed ?> confirmé(s) · <?= $waiting ?> en attente</p></div><div><a class="text-link" href="courses?course=<?= (int)$course['id'] ?>">← Inscriptions</a><?php if (($_SESSION['user']['role'] ?? '')==='Admin'): ?> · <a class="text-link" href="removals?type=courses&amp;id=<?= (int)$course['id'] ?>">Supprimer le cours</a><?php endif; ?></div></div>
 <?php if (!$editable): ?><p class="notice" role="status">Ce cours est annulé ou a déjà commencé ; il ne peut plus être modifié.</p><?php else: ?>
 <?php if ($error && !$keep): ?><p class="form-hint">Les champs affichent les valeurs actuelles. Vérifiez-les avant de réessayer.</p><?php endif; ?>
 <form method="post" action="course_edit?id=<?= (int)$course['id'] ?>" class="form-grid account-form"><input type="hidden" name="csrf" value="<?= e(csrf()) ?>"><input type="hidden" name="version" value="<?= e($version) ?>">

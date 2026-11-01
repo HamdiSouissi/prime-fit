@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../services/MemberCardMailer.php';
+require_once __DIR__ . '/../services/ProtectedRemoval.php';
 require_once __DIR__ . '/../services/MemberPortalMailer.php';
 require_once __DIR__ . '/../services/MemberPortalInvitations.php';
 require_once __DIR__ . '/../services/SubscriptionService.php';
@@ -116,6 +117,10 @@ class ManagementController {
         $stmt=db()->prepare('SELECT COUNT(*) FROM members'.$where); $stmt->execute($params); $total=(int)$stmt->fetchColumn();
         $pageNumber=min($pageNumber,max(1,(int)ceil($total/$limit))); $offset=($pageNumber-1)*$limit;
         $stmt=db()->prepare('SELECT * FROM members'.$where.' ORDER BY created_at DESC, id DESC LIMIT '.$limit.' OFFSET '.$offset); $stmt->execute($params); $members=$stmt->fetchAll();
+        $removalVersions=[];
+        if (($_SESSION['user']['role'] ?? '')==='Admin') {
+            foreach ($members as $listedMember) $removalVersions[(int)$listedMember['id']]=ProtectedRemoval::versionFor('members',$listedMember);
+        }
         $flash = $_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/members.php';
     }
     public function memberProfile(): void {

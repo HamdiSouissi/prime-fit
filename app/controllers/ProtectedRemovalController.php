@@ -15,9 +15,12 @@ final class ProtectedRemovalController {
                 $retry=(new LoginRateLimiter($pdo))->reserve((string)($_SERVER['REMOTE_ADDR'] ?? ''),'removal-admin:'.(int)$_SESSION['user']['id']);
                 if ($retry>0) { http_response_code(429); header('Retry-After: '.$retry); throw new DomainException('Trop de tentatives. Réessayez plus tard.'); }
                 $ids=$_POST['ids'] ?? []; $versions=$_POST['versions'] ?? []; $password=$_POST['admin_password'] ?? '';
+                if (($_POST['confirm'] ?? '')!=='1') throw new DomainException('Confirmez la sélection avant de continuer.');
                 if (!is_array($ids) || !is_array($versions) || !is_string($password)) throw new DomainException('Formulaire invalide.');
                 $results=$service->execute($type,$ids,$versions,$password);
                 $_SESSION['flash']='Opération terminée : '.implode(' ; ',array_map(static fn($id,$result)=>'#'.$id.' : '.$result,array_keys($results),$results)).'.';
+                $origins=['members'=>'members','coaches'=>'coaches','courses'=>'courses','rooms'=>'courses','subscriptions'=>'subscriptions'];
+                if (($_GET['from'] ?? '')===($origins[$type] ?? null)) redirect($origins[$type]);
                 redirect('removals&type='.$type);
             } catch (DomainException $ex) { $error=$ex->getMessage(); }
               catch (PDOException $ex) {
@@ -25,8 +28,21 @@ final class ProtectedRemovalController {
                   $error='Opération annulée : vérifiez les modules et les données liées, puis réessayez. Aucun élément du lot n’a été modifié.';
               }
         }
-        try { $result=$service->listing($type,$search,(int)$page); }
-        catch (DomainException $e) { $error=$e->getMessage(); $result=$service->listing($type,'',1); }
+        $selected=[];
+        if ($_SERVER['REQUEST_METHOD']==='GET' && isset($_GET['id'])) $selected=[$_GET['id']];
+        elseif ($_SERVER['REQUEST_METHOD']==='POST' && is_array($_POST['ids'] ?? null)) $selected=$_POST['ids'];
+        $selected=array_slice($selected,0,20); $selectedRows=[];
+        foreach ($selected as $selectedId) {
+            if (!is_string($selectedId) || !preg_match('/\A[1-9][0-9]{0,9}\z/D',$selectedId)) continue;
+            $row=$service->one($type,(int)$selectedId); if ($row) $selectedRows[(int)$selectedId]=$row;
+        }
+        if ($selected && !$selectedRows && $error==='') { http_response_code(404); exit('Élément introuvable.'); }
+        if ($selectedRows) $result=['rows'=>array_values($selectedRows),'page'=>1,'pages'=>1,'total'=>count($selectedRows),'search'=>''];
+        else {
+            try { $result=$service->listing($type,$search,(int)$page); }
+            catch (DomainException $e) { $error=$e->getMessage(); $result=$service->listing($type,'',1); }
+        }
+        $preselected=array_fill_keys(array_keys($selectedRows),true);
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/protected_removals.php';
     }
 }
