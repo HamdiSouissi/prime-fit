@@ -47,9 +47,12 @@ class FitnessController {
               catch (Throwable $ex) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $ex; }
         }
         $members=$pdo->query('SELECT id,first_name,last_name,card_number FROM members ORDER BY last_name,first_name')->fetchAll();
-        $measurements=[]; $programs=[];
+        $measurements=[]; $programs=[]; $measurementRevisions=[]; $revisionsUnavailable=false;
         if ($member) {
             $stmt=$pdo->prepare('SELECT * FROM fitness_measurements WHERE member_id=? ORDER BY measured_on DESC,id DESC LIMIT 100'); $stmt->execute([$memberId]); $measurements=$stmt->fetchAll();
+            try {
+                $stmt=$pdo->prepare('SELECT * FROM member_measurement_revisions WHERE member_id=? ORDER BY id DESC LIMIT 100'); $stmt->execute([$memberId]); $measurementRevisions=$stmt->fetchAll();
+            } catch (PDOException $e) { $revisionsUnavailable=true; error_log('Historique des corrections de mesures indisponible : '.$e->getMessage()); }
             $stmt=$pdo->prepare('SELECT * FROM fitness_programs WHERE member_id=? ORDER BY created_at DESC,id DESC LIMIT 100'); $stmt->execute([$memberId]); $programs=$stmt->fetchAll();
         }
         $flash=$_SESSION['flash'] ?? ''; unset($_SESSION['flash']); require __DIR__.'/../views/fitness.php';

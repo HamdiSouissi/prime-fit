@@ -142,20 +142,28 @@ final class MemberPortalController {
             verify_csrf();
             $id=filter_var($_POST['course_id'] ?? null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
             try {
-                if (($_POST['action'] ?? '')!=='book' || !$id) throw new DomainException('Demande de réservation invalide.');
-                $status=(new MemberPortalBooking(db()))->book($_SESSION['member_portal'],(int)$id,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
-                $_SESSION['portal_notice']=['type'=>'success','message'=>$status==='confirmed' ? 'Votre inscription est confirmée.' : 'Ce cours est complet : vous êtes sur la liste d’attente.'];
+                $action=$_POST['action'] ?? '';
+                if ($action==='measurement_update') {
+                    $this->limit('measurement:'.$_SESSION['member_portal']['member_id']);
+                    (new MemberPortalMeasurements(db()))->update($_SESSION['member_portal'],$_POST,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
+                    $_SESSION['portal_notice']=['type'=>'success','message'=>'Votre mesure a été mise à jour.'];
+                } elseif ($action==='book' && $id) {
+                    $status=(new MemberPortalBooking(db()))->book($_SESSION['member_portal'],(int)$id,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
+                    $_SESSION['portal_notice']=['type'=>'success','message'=>$status==='confirmed' ? 'Votre inscription est confirmée.' : 'Ce cours est complet : vous êtes sur la liste d’attente.'];
+                } else throw new DomainException('Demande invalide.');
             } catch (DomainException $e) {
                 $_SESSION['portal_notice']=['type'=>'error','message'=>$e->getMessage()];
             } catch (PDOException $e) {
                 // Ne pas exposer les erreurs SQL ; en cas de verrou concurrent, proposer un nouvel essai.
-                error_log('Réservation membre indisponible : '.$e->getMessage());
-                $_SESSION['portal_notice']=['type'=>'error','message'=>'La réservation n’a pas pu être enregistrée. Vérifiez vos inscriptions puis réessayez.'];
+                error_log('Action espace membre indisponible : '.$e->getMessage());
+                $_SESSION['portal_notice']=['type'=>'error','message'=>'La modification n’a pas pu être enregistrée. Vérifiez les données affichées puis réessayez.'];
             }
-            redirect('member_space');
+            $returnPage=filter_var($_POST['measurement_page'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]) ?: 1;
+            redirect('member_space&measurement_page='.$returnPage);
         }
         $notice=$_SESSION['portal_notice'] ?? null; unset($_SESSION['portal_notice']);
-        $data=(new MemberPortalData(db()))->get($_SESSION['member_portal']['member_id']);
+        $measurePage=filter_var($_GET['measurement_page'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]) ?: 1;
+        $data=(new MemberPortalData(db()))->get($_SESSION['member_portal']['member_id'],null,(int)$measurePage);
         require __DIR__.'/../views/member_portal.php';
     }
     public function card(): void {

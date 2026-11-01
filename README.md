@@ -121,7 +121,7 @@ Le nom, l’e-mail, la réinitialisation du mot de passe et le statut du compte 
 
 Admin, Gérant et Coach peuvent consulter et ajouter des mesures (poids, taille, tour de taille, notes) ainsi que des programmes et objectifs, puis archiver ces derniers. L'IMC est calculé à partir de chaque poids et taille saisis ; il n'est pas un diagnostic médical. Le graphique affiche au plus les 100 dernières mesures. Les données affichées sont volontairement échappées et les modifications sont journalisées. Les autres rôles n'ont pas accès à ce module.
 
-Ces données sont sensibles : avant usage réel, définir les autorisations, la base légale, les durées de conservation et les mesures de confidentialité adaptées, y compris les sauvegardes. Les coachs autorisés peuvent actuellement consulter tous les membres : il n'y a pas encore de restriction par affectation. Modification/suppression des mesures, exercices structurés, suivi des performances, consentement et export restent à développer.
+Ces données sont sensibles : avant usage réel, définir les autorisations, la base légale, les durées de conservation et les mesures de confidentialité adaptées, y compris les sauvegardes. Les coachs autorisés peuvent actuellement consulter tous les membres : il n'y a pas encore de restriction par affectation. La correction des mesures par le membre est décrite dans la section Espace membre. La suppression des mesures, les exercices structurés, le suivi des performances, le consentement et l’export restent à développer.
 
 ## Boutique
 
@@ -447,7 +447,7 @@ L’espace membre utilise une session et des comptes **distincts** du personnel.
 
 Le lien expire après 24 heures, ne fonctionne qu’une fois et permet au membre de choisir son mot de passe ; aucun mot de passe n’est envoyé par e-mail. Le serveur ne stocke que l’empreinte du jeton. L’activation échoue si le membre est désactivé ou son adresse a changé. Les connexions et activations sont limitées par compte et IP via `auth_rate_limits` ; toutes les tentatives comptent, y compris les réussies. Une session membre est revalidée à chaque accès (statut, adresse et mot de passe). L’adresse de connexion est distincte des comptes du personnel. Les adresses e-mail des comptes membres doivent être uniques ; corrigez les doublons avant invitation. Changer l’e-mail d’un membre déjà activé bloque son accès ; une procédure sécurisée de changement d’adresse reste à développer.
 
-Depuis **Connexion → Vous êtes membre ?**, le membre peut consulter ses 20 derniers abonnements, passages, mesures, programmes et inscriptions, ses visites acceptées et les 20 prochains cours planifiés. Les notes internes de mensuration ne sont pas affichées. Les horaires utilisent le fuseau configuré. La modification sécurisée de l’adresse e-mail, le changement de mot de passe depuis une session et la pagination de l’historique restent à développer. Le portail n’est **pas prêt pour la production** : contrôlez la confidentialité et l’autorisation de partager les programmes et données sportives avec chaque membre avant activation, et complétez le journal des actions et les tests de sécurité. Les liens d’activation peuvent apparaître dans les journaux d’accès du serveur : configurez-les pour masquer les paramètres sensibles et restreignez leur accès.
+Depuis **Connexion → Vous êtes membre ?**, le membre peut consulter ses 20 derniers abonnements, passages, programmes et inscriptions, ses mesures paginées, ses visites acceptées et les 20 prochains cours planifiés. Les notes internes de mensuration ne sont pas affichées. Les horaires utilisent le fuseau configuré. La modification sécurisée de l’adresse e-mail, le changement de mot de passe depuis une session et la pagination de l’historique restent à développer. Le portail n’est **pas prêt pour la production** : contrôlez la confidentialité et l’autorisation de partager les programmes et données sportives avec chaque membre avant activation, et complétez le journal des actions et les tests de sécurité. Les liens d’activation peuvent apparaître dans les journaux d’accès du serveur : configurez-les pour masquer les paramètres sensibles et restreignez leur accès.
 
 ### Carte QR et connexion membre
 
@@ -469,6 +469,20 @@ mysql -u root -p prime_fit < database/member_qr_logins.sql
 ```
 
 Adaptez le nom de base. Les nouvelles installations via `schema.sql` contiennent déjà ces tables. La messagerie et `base_url` restent indispensables pour les invitations, réinitialisations et confirmations QR ; le renvoi de la carte QR utilise la messagerie déjà configurée et ne nécessite pas base_url. Vérifiez l’ensemble sur Laragon/MySQL, avec Mailpit puis un transport réel : le sandbox n’a ni MySQL/Laragon, ni Mailpit, ni caméra et les tests SQLite ne vérifient pas les verrous concurrents. Les e-mails Mailpit sont des essais et ne sont pas livrés aux membres.
+
+### Corriger ses mesures sportives
+
+Dans **Mon espace → Mes mensurations**, un membre actif peut corriger la date, le poids, la taille et le tour de taille des mesures qui lui appartiennent (20 par page), y compris celles saisies par un coach. Le mot de passe actuel est demandé, avec limitation persistante des tentatives ; les données d’un autre membre ne peuvent pas être ciblées. La date ne peut pas être future. Les notes du coach et l’auteur de la mesure restent inchangés et ne sont pas affichés au membre. Un contrôle de version empêche d’écraser une modification simultanée des valeurs.
+
+Chaque correction conserve les valeurs avant et après dans `member_measurement_revisions` et une entrée dans le journal d’activité, dans la même transaction que la mise à jour. Dans **Suivi sportif**, Admin, Gérant et Coach voient les 100 dernières corrections du membre sélectionné. Ces historiques contiennent des données sensibles : limitez leurs accès et définissez une durée de conservation et une base légale adaptées. Ils ne reconstituent pas les modifications antérieures à cette fonctionnalité. L’ajout et la suppression de mesures par le membre ne sont pas inclus. Testez les verrous sur MySQL/Laragon avant utilisation réelle.
+
+Pour une base existante, après sauvegarde et après installation du suivi sportif :
+
+```sh
+mysql -u root -p prime_fit < database/member_measurement_revisions.sql
+```
+
+Adaptez le nom de base. Pour une nouvelle installation, la table figure déjà dans `database/schema.sql`.
 
 ### Modifier sa fiche membre
 

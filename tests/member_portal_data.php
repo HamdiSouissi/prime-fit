@@ -20,4 +20,8 @@ if (!str_contains($html,'Inscription confirmée') || str_contains($html,'name="c
 $db->exec("UPDATE course_bookings SET status='cancelled' WHERE member_id=1"); $data=$service->get(1,new DateTimeImmutable('2026-02-01 10:00:00'));
 ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean();
 if (!str_contains($html,'S’inscrire') || !str_contains($html,'name="csrf"') || !str_contains($html,'name="course_id"')) throw new RuntimeException('Formulaire d’inscription absent');
+for ($i=10;$i<35;$i++) $db->prepare('INSERT INTO fitness_measurements VALUES(?,1,?,?,?,?,?)')->execute([$i,'2025-01-01',80,180,null,'interne']);
+$second=$service->get(1,new DateTimeImmutable('2026-02-01 10:00:00'),2);
+if ($second['measureTotal']!==26 || $second['measurePages']!==2 || $second['measurePage']!==2 || count($second['measurements'])!==6 || isset($second['measurements'][0]['notes'])) throw new RuntimeException('Pagination des mesures incorrecte');
+if ($service->get(1,new DateTimeImmutable('2026-02-01'),999)['measurePage']!==2) throw new RuntimeException('Page invalide non bornée');
 echo "Espace membre : rendu échappé et actions de réservation OK\n";
