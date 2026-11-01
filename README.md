@@ -43,7 +43,7 @@ database/        schema.sql, demo.sql
 
 Le tableau de bord calcule les membres ayant au moins un abonnement actif non expiré, les encaissements du jour et du mois, les passages acceptés, les échéances à 7 jours et la répartition des formules. Les sommes correspondent uniquement aux paiements d'abonnements enregistrés, hors ventes boutique et dépenses, sans calcul de TVA ni de timbre. Le graphique des encaissements couvre les six derniers mois. Les données de démonstration ne représentent pas une activité réelle.
 
-Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage est échappé, les formulaires sensibles utilisent un jeton CSRF et les mots de passe sont vérifiés avec `password_verify`. La limitation des tentatives est **par session uniquement** et n'est pas suffisante contre une attaque distribuée : ajouter un contrôle côté serveur/IP et une politique de mots de passe avant la production. Les rôles contrôlent les principaux modules ; la gestion des permissions fines reste à développer. Activer HTTPS, sauvegardes, supervision et durcissement serveur avant déploiement. Le tableau de bord masque les encaissements aux Coachs et les passages aux Comptables, et n'interroge pas ces données pour les rôles concernés. Les autres données et permissions des différents modules restent régies par leurs règles propres.
+Les requêtes utilisent PDO et les entrées SQL sont préparées ; l'affichage est échappé, les formulaires sensibles utilisent un jeton CSRF et les mots de passe sont vérifiés avec `password_verify`. Les connexions sont limitées par compte et par adresse IP dans la base, mais cette protection ne remplace pas les défenses serveur contre les attaques distribuées. Les vérifications du mot de passe lors du changement personnel ou de la gestion des comptes restent limitées par session. Les rôles contrôlent les principaux modules ; la gestion des permissions fines reste à développer. Activer HTTPS, sauvegardes, supervision et durcissement serveur avant déploiement. Le tableau de bord masque les encaissements aux Coachs et les passages aux Comptables, et n'interroge pas ces données pour les rôles concernés. Les autres données et permissions des différents modules restent régies par leurs règles propres.
 
 ## Étapes suivantes
 
@@ -177,7 +177,7 @@ Depuis les détails d'un produit, Admin et Gérant peuvent modifier son nom, sa 
 
 Chaque utilisateur connecté peut changer son propre mot de passe via **Mon compte**, avec son mot de passe actuel et confirmation. Le nouveau mot de passe doit comprendre entre 12 et 72 octets (un caractère accentué peut compter pour plusieurs octets). Le changement et son journal sont enregistrés ensemble ; aucun mot de passe n'est enregistré dans le journal. La session courante et son jeton CSRF sont renouvelés. Les autres sessions sont invitées à se reconnecter à leur prochaine requête ; les requêtes déjà en cours ne sont pas interrompues. Les comptes inactifs sont bloqués lors de leur prochaine requête. Après cette mise à jour, les sessions existantes doivent se reconnecter une fois. Aucune migration SQL n'est nécessaire.
 
-La limitation des essais de connexion et de changement de mot de passe reste **par session uniquement**, contournable en créant une nouvelle session ; elle doit être complétée côté serveur avant production. La réinitialisation autonome d'un mot de passe oublié, l'expiration d'inactivité et la double authentification restent à développer ; un administrateur peut réinitialiser les comptes du personnel. Utilisez HTTPS et remplacez le compte de démonstration avant tout déploiement.
+La connexion dispose d'une limite persistante compte/IP (voir ci-dessous). La limitation du changement de mot de passe reste **par session uniquement**, contournable en créant une nouvelle session ; elle doit être renforcée côté serveur avant production. La réinitialisation autonome d'un mot de passe oublié, l'expiration d'inactivité et la double authentification restent à développer ; un administrateur peut réinitialiser les comptes du personnel. Utilisez HTTPS et remplacez le compte de démonstration avant tout déploiement.
 
 ## Prix des abonnements et reprise historique
 
@@ -231,7 +231,7 @@ Le menu **Comptes du personnel** est réservé au rôle Admin. Il permet de cré
 
 Chaque modification exige le mot de passe actuel de l'administrateur et est journalisée sans mot de passe. Un administrateur ne peut pas modifier son propre rôle ou statut ni réinitialiser son propre mot de passe depuis ce module ; il utilise **Mon compte** pour ce dernier. Les actions administratives vérifient que l'auteur est toujours un Admin actif et conservent au moins un Admin actif. Les modifications et le journal sont transactionnels.
 
-**Tout changement actif/inactif invalide définitivement l'ancien mot de passe et les anciennes sessions**, y compris si le compte est réactivé avant leur prochaine requête. Après réactivation, l'Admin doit définir un nouveau mot de passe dans la fiche du compte ; aucun mot de passe n'est envoyé automatiquement. Transmettez-le par un canal sécurisé. Les autres modifications de droits prennent effet à la prochaine requête ; les requêtes déjà en cours ne sont pas interrompues. Les mots de passe doivent comporter de 12 à 72 octets. La limitation des tentatives est uniquement par session et doit être renforcée côté serveur avant production. Aucune migration SQL n'est nécessaire.
+**Tout changement actif/inactif invalide définitivement l'ancien mot de passe et les anciennes sessions**, y compris si le compte est réactivé avant leur prochaine requête. Après réactivation, l'Admin doit définir un nouveau mot de passe dans la fiche du compte ; aucun mot de passe n'est envoyé automatiquement. Transmettez-le par un canal sécurisé. Les autres modifications de droits prennent effet à la prochaine requête ; les requêtes déjà en cours ne sont pas interrompues. Les mots de passe doivent comporter de 12 à 72 octets. La limitation des tentatives de réauthentification pour ces opérations est uniquement par session et doit être renforcée côté serveur avant production. Aucune migration SQL n'est nécessaire pour la gestion des comptes.
 
 ### Nom de la salle et messages
 
@@ -254,3 +254,25 @@ Depuis le planning, Admin, Gérant et Réceptionniste peuvent modifier le titre,
 Pour protéger les inscriptions, les horaires ne peuvent pas changer tant que des réservations confirmées ou en attente existent, et la capacité ne peut pas descendre sous le nombre confirmé. Si la capacité augmente, les personnes en attente éligibles au moment du contrôle sont confirmées dans l'ordre d'inscription, tandis que les autres restent en attente. **Aucune notification automatique n'est envoyée** aux participants : prévenez-les manuellement, notamment après changement de salle ou de coach et après une promotion. Les réservations annulées ne bloquent pas la modification des horaires.
 
 Aucune migration supplémentaire n'est nécessaire si les tables des modules Cours et Coachs existent déjà. Les verrous et la concurrence restent à tester sur MySQL/Laragon avant utilisation réelle.
+
+### Protection des connexions
+
+Sur une base existante, **après sauvegarde**, importer la table de protection dans la base configurée :
+
+```bash
+mysql -u root -p prime_fit < database/auth_rate_limits.sql
+```
+
+Remplacez `prime_fit` si votre base porte un autre nom. Une nouvelle installation avec `schema.sql` possède déjà la table. `CREATE TABLE IF NOT EXISTS` ne corrige pas une éventuelle table homonyme de structure différente. Tant que la table est absente ou inaccessible, la connexion est refusée ; vérifiez la base sélectionnée et les droits de l'utilisateur MySQL.
+
+Les tentatives de connexion, réussies ou non, sont réservées de manière transactionnelle : **5 par compte et 60 par adresse IP sur une fenêtre fixe de 15 minutes**, indépendamment des sessions. Une fois l'une des limites atteinte, de nouvelles tentatives sont refusées jusqu'à expiration de cette fenêtre, y compris avec un mot de passe correct. Une connexion réussie ne réinitialise pas les compteurs. Les variantes d'adresse reconnues comme le même utilisateur par MySQL partagent le même compteur de compte. Les adresses inconnues sont aussi limitées ; les messages ne révèlent pas directement si un compte existe. Les requêtes bloquées reçoivent HTTP 429 et `Retry-After`.
+
+L'adresse réseau utilisée est uniquement `REMOTE_ADDR` : les en-têtes `X-Forwarded-For` ne sont pas utilisés. Derrière un proxy ou avec une IP partagée, plusieurs personnes peuvent donc partager la même limite ; configurez de façon sûre l'adresse client au niveau de votre serveur web et vérifiez ce comportement avant déploiement. Un tiers peut temporairement bloquer un compte connu ; contactez l'administrateur ou attendez la fin de la fenêtre. Cette protection n'est pas une garantie contre toutes les attaques distribuées ni une double authentification. Les vérifications du mot de passe dans **Mon compte** et la réauthentification Admin restent limitées par session seulement. Synchronisez les horloges si plusieurs serveurs utilisent la même base.
+
+La table contient des empreintes de compte ou d'adresse, des compteurs et des horodatages, sans mot de passe ni adresse en clair. Ces empreintes restent potentiellement identifiantes : limitez leur accès. Pour éviter leur accumulation, prévoyez un nettoyage périodique par une tâche d'administration, par exemple après plus de 24 heures (bien au-delà de la fenêtre active) :
+
+```sql
+DELETE FROM auth_rate_limits WHERE window_started < UNIX_TIMESTAMP() - 86400;
+```
+
+Ne videz pas les compteurs actifs pendant une attaque. Les tests automatisés utilisent SQLite ; les verrous concurrents, la migration MySQL et le comportement derrière votre serveur Laragon doivent encore être vérifiés en conditions réelles.

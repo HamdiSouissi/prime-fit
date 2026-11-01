@@ -13,7 +13,7 @@ header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 function e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
 function csrf(): string { return $_SESSION['csrf'] ??= bin2hex(random_bytes(32)); }
-function verify_csrf(): void { if (!hash_equals($_SESSION['csrf'] ?? '', $_POST['csrf'] ?? '')) { http_response_code(419); exit('Session expirée. Actualisez la page.'); } }
+function verify_csrf(): void { $token=$_POST['csrf'] ?? null; $expected=$_SESSION['csrf'] ?? null; if (!is_string($token) || !is_string($expected) || $expected==='' || !hash_equals($expected,$token)) { http_response_code(419); exit('Session expirée. Actualisez la page.'); } }
 function db(): PDO {
     global $config;
     static $pdo = null;

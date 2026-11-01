@@ -1,6 +1,14 @@
 CREATE DATABASE IF NOT EXISTS prime_fit CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE prime_fit;
 CREATE TABLE IF NOT EXISTS users (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(120) NOT NULL, email VARCHAR(190) NOT NULL UNIQUE, password_hash VARCHAR(255) NOT NULL, role ENUM('Admin','Gérant','Réceptionniste','Coach','Comptable') NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB;
+-- Après sauvegarde, sélectionner la base de l'application avant import.
+-- Table indépendante des comptes et des sessions ; les clés sont des empreintes.
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+  bucket_key CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY,
+  window_started BIGINT UNSIGNED NOT NULL,
+  attempts INT UNSIGNED NOT NULL DEFAULT 0,
+  INDEX idx_auth_limit_window (window_started)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS members (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, phone VARCHAR(30), email VARCHAR(190), card_number VARCHAR(50) UNIQUE, qr_token CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL UNIQUE, governorate VARCHAR(80), birth_date DATE, avatar_color VARCHAR(20) DEFAULT 'gold', status ENUM('active','inactive','blacklisted') NOT NULL DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, INDEX idx_member_name(last_name,first_name)) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS plans (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, duration_days INT UNSIGNED NOT NULL, price DECIMAL(10,3) NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS subscriptions (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, member_id INT UNSIGNED NOT NULL, plan_id INT UNSIGNED NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, agreed_price DECIMAL(10,3) NULL, status ENUM('active','frozen','cancelled') NOT NULL DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(member_id) REFERENCES members(id), FOREIGN KEY(plan_id) REFERENCES plans(id), INDEX idx_subscription_dates(status,end_date), INDEX idx_subscription_member(member_id)) ENGINE=InnoDB;
