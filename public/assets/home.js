@@ -152,7 +152,7 @@
       window.setInterval(() => {
         const rect = hero.getBoundingClientRect();
         if (!paused && !hovering && !focused && !reducedMotion.matches && !document.hidden && !document.querySelector('dialog[open]') && rect.bottom > 0 && rect.top < window.innerHeight) show(index + 1);
-      }, 7000);
+      }, 2000);
     }
   }
 
