@@ -37,6 +37,15 @@ require __DIR__.'/management_header.php';
       <p>Adresse : <?= e($member['email'] ?: 'non renseignée') ?></p>
     </form>
     <?php endif; ?>
+    <?php if ($_SESSION['user']['role']==='Admin'): ?>
+    <form method="post" action="member_card">
+      <input type="hidden" name="csrf" value="<?= e(csrf()) ?>">
+      <input type="hidden" name="id" value="<?= (int)$member['id'] ?>">
+      <input type="hidden" name="action" value="send_invitation">
+      <button class="scanner-stop" type="submit">Inviter à l’espace membre</button>
+      <p>Pour un membre actif dont le compte n’est pas encore activé. Une nouvelle invitation invalide la précédente.</p>
+    </form>
+    <?php endif; ?>
     <form method="post" action="member_card">
       <input type="hidden" name="csrf" value="<?= e(csrf()) ?>">
       <input type="hidden" name="id" value="<?= (int)$member['id'] ?>">

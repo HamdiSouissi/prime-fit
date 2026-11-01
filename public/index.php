@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/../app/core/bootstrap.php';
 require __DIR__ . '/../app/controllers/AuthController.php';
+require __DIR__ . '/../app/controllers/MemberPortalController.php';
 require __DIR__ . '/../app/controllers/HomeController.php';
 require __DIR__ . '/../app/controllers/AccountController.php';
 require __DIR__ . '/../app/controllers/DashboardController.php';
@@ -37,6 +38,15 @@ if ($resolved['legacy'] && ($_SERVER['REQUEST_METHOD'] ?? 'GET')==='GET') {
     header('Location: '.UrlRouter::canonical($_SERVER['SCRIPT_NAME'] ?? '/index.php',$page,$_GET),true,302); exit;
 }
 try {
+    // L'espace membre dispose d'une identité et de routes distinctes de celles du personnel.
+    if (in_array($page,['member_login','member_activate','member_space','member_logout'],true)) {
+        $portal=new MemberPortalController();
+        if ($page==='member_login') $portal->login();
+        elseif ($page==='member_activate') $portal->activate();
+        elseif ($page==='member_logout') $portal->logout();
+        else $portal->space();
+        exit;
+    }
     // Révoque les sessions périmées après changement de mot de passe ou désactivation.
     if (isset($_SESSION['user']) && !in_array($page, ['home','login','logout'], true)) {
         $stmt = db()->prepare('SELECT id,name,email,role,is_active,password_hash FROM users WHERE id=?');
