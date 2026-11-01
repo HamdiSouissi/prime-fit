@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../services/SubscriptionPaymentService.php';
 require_once __DIR__.'/../services/PaymentRefundService.php';
+require_once __DIR__.'/../services/PaymentFailureMessage.php';
 class PaymentController {
     private function canWrite(): bool {
         return in_array($_SESSION['user']['role'], ['Admin', 'Gérant', 'Réceptionniste', 'Comptable'], true);
@@ -16,9 +17,16 @@ class PaymentController {
             $amount=$_POST['amount'] ?? ''; $method=$_POST['method'] ?? '';
             if (!$subscription || !is_string($amount) || !is_string($method)) $error='Vérifiez les champs du paiement.';
             else {
-                try { (new SubscriptionPaymentService(db(),(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? ''))->pay($subscription,$amount,$method);
+                $service=new SubscriptionPaymentService(db(),(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? '');
+                try { $service->pay($subscription,$amount,$method);
                     $_SESSION['flash']='Paiement enregistré. Le reçu est disponible dans la liste.'; redirect('payments');
                 } catch (DomainException $ex) { $error=$ex->getMessage(); }
+                  catch (PDOException $ex) {
+                      // Ne jamais exposer le message SQL brut : il peut contenir des données sensibles.
+                      error_log('Paiement — '.$service->failureStage().' : '.$ex->getMessage());
+                      http_response_code(503);
+                      $error=PaymentFailureMessage::describe($service->failureStage(),$ex);
+                  }
             }
         }
         $date = $_GET['date'] ?? date('Y-m-d');

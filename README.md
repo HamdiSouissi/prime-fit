@@ -361,6 +361,10 @@ DELETE FROM auth_rate_limits WHERE window_started < UNIX_TIMESTAMP() - 86400;
 
 Ne videz pas les compteurs actifs pendant une attaque. Les tests automatisés utilisent SQLite ; les verrous concurrents, la migration MySQL et le comportement derrière votre serveur Laragon doivent encore être vérifiés en conditions réelles.
 
+### Diagnostic d’un paiement
+
+En cas d’erreur SQL pendant l’enregistrement, la caisse indique l’étape, le SQLSTATE et le code de la base, sans afficher les données SQL brutes. Le détail est enregistré dans le journal PHP configuré pour Apache. L’encaissement et son journal sont effectués dans la même transaction ; en cas d’échec de la confirmation de transaction, le résultat peut être incertain. Vérifiez toujours la caisse et les reçus avant de retenter, pour éviter un doublon. Si une incompatibilité de colonne est signalée, inspectez la structure de `payments` dans la base réelle plutôt que de modifier ou réimporter son schéma sans sauvegarde. Ces informations de diagnostic ne corrigent pas à elles seules un problème propre à une installation.
+
 ### Remboursements d’abonnement enregistrés
 
 Sur une base existante, sauvegardez puis importez la nouvelle table dans la base utilisée :
