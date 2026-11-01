@@ -7,7 +7,7 @@ $__months = [1=>'janvier','février','mars','avril','mai','juin','juillet','aoû
 $__dateLabel = ucfirst($__weekday[date('l')]).' '.date('j').' '.$__months[(int)date('n')].' '.date('Y');
 // [section, page, icône Lucide, libellé, rôles autorisés (null = tous)] ; une chaîne = titre de groupe.
 $__items = [
-    ['dashboard','dashboard','layout-dashboard','Tableau de bord',null],
+    ['dashboard','dashbord','layout-dashboard','Tableau de bord',null],
     ['members','members','users-round','Membres',null],
     ['subscriptions','subscriptions','credit-card','Abonnements',null],
     ['payments','payments','wallet-cards','Paiements',['Admin','Gérant','Réceptionniste','Comptable']],
@@ -32,7 +32,7 @@ $__needsCharts = in_array($section, ['fitness','dashboard','reports'], true);
 <script>try{var d=document.documentElement;if(localStorage.getItem('prime-theme')==='light')d.classList.add('light');if(localStorage.getItem('prime-compact')==='1')d.classList.add('compact');}catch(e){}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="assets/style.css"><script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script><?php if ($__needsCharts): ?><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script><?php endif; ?><script src="assets/notifications.js" defer></script><script src="assets/app.js" defer></script></head><body data-app-name="<?= e(gym_name()) ?>"<?= !empty($bodyClass) ? ' class="'.e($bodyClass).'"' : '' ?>>
 <a class="skip-link" href="#main">Aller au contenu</a>
-<div class="app"><aside class="sidebar" id="sidebar" aria-label="Navigation principale"><a class="brand" href="dashboard"><span class="brand-icon">✳</span><span class="brand-text"><?= gym_brand_markup() ?></span></a><div class="side-label">Menu principal</div><nav class="navigation">
+<div class="app"><aside class="sidebar" id="sidebar" aria-label="Navigation principale"><a class="brand" href="dashbord"><span class="brand-icon">✳</span><span class="brand-text"><?= gym_brand_markup() ?></span></a><div class="side-label">Menu principal</div><nav class="navigation">
 <?php foreach ($__items as $__it): ?>
 <?php if (is_string($__it)): ?><div class="side-label"><?= e($__it) ?></div><?php continue; endif; ?>
 <?php [$__sec,$__page,$__icon,$__label,$__roles] = $__it; if ($__roles !== null && !in_array($__role, $__roles, true)) continue; $__active = $section === $__sec; ?>

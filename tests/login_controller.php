@@ -15,7 +15,7 @@ function redirect(string $route): void { throw new Redirected($route); }
 require __DIR__.'/../app/controllers/AuthController.php';
 session_start(); $_SERVER['REQUEST_METHOD']='POST'; $_SERVER['REMOTE_ADDR']='192.0.2.1';
 $_POST=['email'=>'admin@example.tn','password'=>'test password 123'];
-try { ob_start(); (new AuthController())->login(); throw new RuntimeException('Connexion correcte refusée'); } catch (Redirected $ex) { ob_end_clean(); }
+try { ob_start(); (new AuthController())->login(); throw new RuntimeException('Connexion correcte refusée'); } catch (Redirected $ex) { ob_end_clean(); if ($ex->getMessage()!=='dashbord') throw new RuntimeException('Redirection après connexion incorrecte'); }
 if (($_SESSION['user']['id'] ?? null)!=1 || isset($_SESSION['user']['password_hash']) || $db->query('SELECT COUNT(*) FROM activity_logs')->fetchColumn()!=1) throw new RuntimeException('Connexion ou audit incorrect');
 // Changer de session ne remet pas les compteurs à zéro.
 for ($i=0;$i<4;$i++) { $_SESSION=[]; $_POST=['email'=>'admin@example.tn','password'=>'incorrect']; ob_start(); (new AuthController())->login(); $html=ob_get_clean(); if (!str_contains($html,'Identifiants incorrects.')) throw new RuntimeException('Erreur générique absente'); }

@@ -1,0 +1,10 @@
+const { JSDOM } = require('jsdom');
+const fs = require('fs');
+const dom = new JSDOM('<button class="menu-button" aria-expanded="false" aria-label="Ouvrir le menu"></button><nav id="mobile-nav" hidden><a href="#contact">Contact</a></nav>', { runScripts: 'outside-only', url: 'https://prime-fit.test/' });
+dom.window.eval(fs.readFileSync('public/assets/home.js', 'utf8'));
+const button=dom.window.document.querySelector('button'), menu=dom.window.document.querySelector('nav');
+button.click(); if (menu.hidden || button.getAttribute('aria-expanded')!=='true') throw Error('Ouverture du menu impossible');
+menu.querySelector('a').click(); if (!menu.hidden || button.getAttribute('aria-expanded')!=='false') throw Error('Fermeture après navigation impossible');
+button.click(); dom.window.document.dispatchEvent(new dom.window.KeyboardEvent('keydown', {key:'Escape'}));
+if (!menu.hidden || dom.window.document.activeElement!==button) throw Error('Fermeture clavier impossible');
+console.log('Accueil : menu mobile et navigation clavier OK');

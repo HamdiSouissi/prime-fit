@@ -3,11 +3,12 @@ declare(strict_types=1);
 require __DIR__.'/../app/core/UrlRouter.php';
 $cases=[
     ['/attendance','/index.php',[],false,'attendance',false],
+    ['/dashbord','/index.php',[],false,'dashbord',false], ['/dashboard','/index.php',[],true,'dashboard',false],
     ['/attendance?date=2026-01-01','/index.php',['date'=>'2026-01-01'],true,'attendance',false],
     ['/public/attendance','/public/index.php',[],true,'attendance',false],
     ['/index.php?page=attendance','/index.php',['page'=>'attendance'],false,'attendance',true],
     ['/public/?page=member_card&id=5','/public/index.php',['page'=>'member_card','id'=>'5'],true,'member_card',true],
-    ['/','/index.php',[],false,'login',false], ['/public/','/public/index.php',[],true,'dashboard',false],
+    ['/','/index.php',[],false,'home',false], ['/public/','/public/index.php',[],true,'home',false],
     ['/attendance?page=payments','/index.php',['page'=>'payments'],true,'attendance',false],
     ['/something/else','/index.php',[],true,null,false], ['/attendance/','/index.php',[],true,null,false],
     ['/index.php?page=x','/index.php',['page'=>['x']],true,null,false],

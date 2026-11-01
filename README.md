@@ -36,6 +36,14 @@ php -S 0.0.0.0:8000 -t public router.php
 
 Le serveur PHP intégré n’utilise pas `.htaccess` : le routeur indiqué est nécessaire pour les URL propres. Ne pas utiliser ce serveur en production.
 
+## Site public et espace de gestion
+
+La racine du domaine affiche un site vitrine public, indépendant de la connexion. Le bouton **Connexion** mène à `/login` ; après connexion du personnel, l’application ouvre `/dashbord`. L’ancienne adresse `/dashboard` reste compatible. La page d’accueil reste publique même lorsqu’une session est présente.
+
+Le nom affiché provient des paramètres de la salle. L’adresse, le téléphone, l’e-mail et les horaires renseignés dans **Paramètres → Informations générales** sont affichés publiquement sur le site : vérifiez-les avant mise en ligne. S’ils ne sont pas renseignés, le site indique que les coordonnées seront disponibles prochainement. Les formules et tarifs ne sont pas publiés automatiquement ; les visiteurs sont invités à contacter la salle. Les images sont des visuels d’illustration générés, et ne représentent pas nécessairement les locaux ou les membres. Les remplacer par vos photographies autorisées si souhaité (`public/assets/landing-hero.jpg` et `landing-training.jpg`).
+
+La mise en ligne effective nécessite votre propre domaine, un hébergement PHP/MySQL, la configuration du DNS, HTTPS, `mod_rewrite` et un document root pointant sur `public/`. Ces éléments ne sont pas configurés automatiquement par le dépôt. Vérifiez le site, les coordonnées, les droits d’utilisation des images et le parcours de connexion sur votre serveur avant publication.
+
 ## Arborescence
 
 ```text

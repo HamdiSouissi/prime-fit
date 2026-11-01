@@ -11,7 +11,7 @@ final class UrlRouter {
         if (!is_string($path) || ($base!=='' && $path!==$base && !str_starts_with($path,$base.'/'))) return ['page'=>null,'legacy'=>false];
         $relative=substr($path,strlen($base));
         if ($relative==='' || $relative==='/' || $relative==='/index.php') {
-            $page=$query['page'] ?? ($authenticated ? 'dashboard' : 'login');
+            $page=$query['page'] ?? 'home';
             if (!is_string($page) || !preg_match('/^[a-z][a-z0-9_]*$/D',$page)) return ['page'=>null,'legacy'=>false];
             return ['page'=>$page,'legacy'=>array_key_exists('page',$query)];
         }

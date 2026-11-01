@@ -27,7 +27,7 @@ class AuthController {
                     if ($validEmail && $validPassword && $user && $user['is_active'] && $verified) {
                         db()->prepare('INSERT INTO activity_logs (user_id, action, ip_address) VALUES (?, ?, ?)')->execute([$user['id'], 'Connexion', substr($address, 0, 45)]);
                         session_regenerate_id(true); $_SESSION['auth_fingerprint']=hash('sha256',$user['password_hash']); unset($user['password_hash']); $_SESSION['user']=$user; unset($_SESSION['login_attempts'],$_SESSION['csrf']);
-                        redirect('dashboard');
+                        redirect('dashbord');
                     }
                     $error='Identifiants incorrects.';
                 }

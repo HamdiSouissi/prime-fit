@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/../app/core/bootstrap.php';
 require __DIR__ . '/../app/controllers/AuthController.php';
+require __DIR__ . '/../app/controllers/HomeController.php';
 require __DIR__ . '/../app/controllers/AccountController.php';
 require __DIR__ . '/../app/controllers/DashboardController.php';
 require __DIR__ . '/../app/controllers/ManagementController.php';
@@ -37,7 +38,7 @@ if ($resolved['legacy'] && ($_SERVER['REQUEST_METHOD'] ?? 'GET')==='GET') {
 }
 try {
     // Révoque les sessions périmées après changement de mot de passe ou désactivation.
-    if (isset($_SESSION['user']) && !in_array($page, ['login','logout'], true)) {
+    if (isset($_SESSION['user']) && !in_array($page, ['home','login','logout'], true)) {
         $stmt = db()->prepare('SELECT id,name,email,role,is_active,password_hash FROM users WHERE id=?');
         $stmt->execute([(int)$_SESSION['user']['id']]); $sessionUser = $stmt->fetch();
         $fingerprint = $_SESSION['auth_fingerprint'] ?? '';
@@ -47,12 +48,13 @@ try {
         }
         unset($sessionUser['password_hash']); $_SESSION['user'] = $sessionUser;
     }
-    if ($page === 'logout') { (new AuthController())->logout(); }
-    elseif ($page === 'login') { if (isset($_SESSION['user'])) redirect('dashboard'); (new AuthController())->login(); }
+    if ($page === 'home') { (new HomeController())->index(); }
+    elseif ($page === 'logout') { (new AuthController())->logout(); }
+    elseif ($page === 'login') { if (isset($_SESSION['user'])) redirect('dashbord'); (new AuthController())->login(); }
     elseif ($page === 'account') { if (!isset($_SESSION['user'])) redirect('login'); (new AccountController())->index(); }
     elseif (in_array($page, ['users','user'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new UserAdminController(); if ($page==='user') $controller->edit(); else $controller->index(); }
     elseif (in_array($page, ['activity','activity_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new ActivityController(); if ($page==='activity_export') $controller->export(); else $controller->index(); }
-    elseif ($page === 'dashboard') { if (!isset($_SESSION['user'])) redirect('login'); (new DashboardController())->index(); }
+    elseif (in_array($page, ['dashboard','dashbord'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new DashboardController())->index(); }
     elseif ($page === 'member_history') { if (!isset($_SESSION['user'])) redirect('login'); (new MemberHistoryController())->index(); }
     elseif ($page === 'member_profile') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberProfile(); }
     elseif ($page === 'member_card') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberCard(); }
