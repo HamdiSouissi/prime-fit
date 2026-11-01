@@ -8,6 +8,7 @@ require __DIR__ . '/../app/controllers/ManagementController.php';
 require __DIR__ . '/../app/controllers/PaymentController.php';
 require __DIR__ . '/../app/controllers/AttendanceController.php';
 require __DIR__ . '/../app/controllers/CourseController.php';
+require __DIR__ . '/../app/controllers/CourseEditController.php';
 require __DIR__ . '/../app/controllers/CoachController.php';
 require __DIR__ . '/../app/controllers/FitnessController.php';
 require __DIR__ . '/../app/controllers/ShopController.php';
@@ -47,6 +48,7 @@ try {
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }
     elseif (in_array($page, ['payments', 'receipt'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); else $controller->index(); }
     elseif ($page === 'attendance') { if (!isset($_SESSION['user'])) redirect('login'); (new AttendanceController())->index(); }
+    elseif ($page === 'course_edit') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseEditController())->index(); }
     elseif ($page === 'courses') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseController())->index(); }
     elseif ($page === 'coaches') { if (!isset($_SESSION['user'])) redirect('login'); (new CoachController())->index(); }
     elseif ($page === 'fitness') { if (!isset($_SESSION['user'])) redirect('login'); (new FitnessController())->index(); }
@@ -63,6 +65,8 @@ try {
         echo 'La base de données doit être mise à jour pour utiliser les cartes QR. Après sauvegarde, importez database/member_qr.sql dans la base utilisée par l’application, puis réessayez.';
     } elseif ($page === 'settings' && ($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'gym_settings') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/gym_settings.sql dans la base utilisée, puis réessayez.';
+    } elseif ($page === 'course_edit' && ($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'private_sessions') !== false) {
+        echo 'La table des séances privées est absente. Après sauvegarde, installez le module Coachs pour vérifier la disponibilité du coach.';
     } elseif ($page === 'subscription_detail' && ($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'subscription_freezes') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_freezes.sql dans la base utilisée.';
     } elseif ($page === 'settings' && ($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'gym_name') !== false) {

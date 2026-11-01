@@ -9,9 +9,9 @@ class CoachSchedule {
         if (!$stmt->fetch()) throw new DomainException('Coach introuvable ou inactif.');
     }
     /** Le même verrou coach doit être détenu par tous les créateurs de créneaux. */
-    public function assertAvailable(int $coach,string $start,string $end): void {
+    public function assertAvailable(int $coach,string $start,string $end,?int $excludeCourse=null): void {
         if (!$this->db->inTransaction()) throw new LogicException('La vérification nécessite une transaction.');
-        $stmt=$this->db->prepare("SELECT id FROM courses WHERE coach_id=? AND status='scheduled' AND starts_at<? AND ends_at>? LIMIT 1"); $stmt->execute([$coach,$end,$start]);
+        $stmt=$this->db->prepare("SELECT id FROM courses WHERE coach_id=? AND status='scheduled' AND starts_at<? AND ends_at>? AND id<>? LIMIT 1"); $stmt->execute([$coach,$end,$start,$excludeCourse ?? 0]);
         if ($stmt->fetch()) throw new DomainException('Ce coach a déjà un cours collectif sur ce créneau.');
         $stmt=$this->db->prepare("SELECT id FROM private_sessions WHERE coach_id=? AND status='scheduled' AND starts_at<? AND ends_at>? LIMIT 1"); $stmt->execute([$coach,$end,$start]);
         if ($stmt->fetch()) throw new DomainException('Ce coach a déjà une séance privée sur ce créneau.');

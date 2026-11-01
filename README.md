@@ -65,7 +65,7 @@ Admin, Gérant et Réceptionniste peuvent enregistrer un passage à partir du nu
 
 Le planning permet de créer des salles et des cours, d'attribuer un utilisateur ayant le rôle Coach, d'inscrire un membre et d'annuler un cours ou une inscription avant son début. Un abonnement actif couvrant la date du cours est nécessaire pour réserver. La capacité est contrôlée sous verrou ; au-delà, les inscriptions rejoignent une liste d'attente. À l'annulation d'une place confirmée, le premier membre toujours éligible est promu automatiquement. Les salles ne peuvent pas accueillir deux cours simultanés. Les rôles Admin, Gérant et Réceptionniste gèrent le planning ; le Coach le consulte.
 
-Les comptes coach peuvent être créés dans le module Coachs. Les conflits de planning du coach avec d'autres cours collectifs et avec les séances privées sont vérifiés à la création. Les notifications de promotion, l'espace membre, l'historique des réservations annulées dans l'interface et la modification des cours restent à développer. Les membres en attente devenus inéligibles restent en attente et sont ignorés lors de la promotion.
+Les comptes coach peuvent être créés dans le module Coachs. Les conflits de planning du coach avec d'autres cours collectifs et avec les séances privées sont vérifiés à la création. Les notifications de promotion, l'espace membre et l'historique des réservations annulées dans l'interface restent à développer. Les membres en attente devenus inéligibles restent en attente et sont ignorés lors de la promotion.
 
 ## Coachs et séances privées
 
@@ -246,3 +246,11 @@ Remplacez `prime_fit` par le nom configuré dans `app/config/local.php` si néce
 Dans **Paramètres → Informations générales**, Admin ou Gérant peut modifier le nom. Il est appliqué à la prochaine page affichée, notamment au logo textuel dans le menu, à la connexion, aux notifications, aux cartes, aux reçus et aux nouveaux e-mails et messages WhatsApp. Il n'est pas figé dans les reçus historiques ; les messages et documents déjà envoyés ou téléchargés ne sont pas modifiés. Si aucun nom n'a encore été enregistré ou si la migration est absente, le nom défini dans `app/config/config.php` (ou sa surcharge locale) reste utilisé. L'icône du logo reste celle du site : le téléversement d'une image de logo n'est pas implémenté.
 
 Les messages intégrés et les dialogues de succès, erreur, avertissement ou confirmation utilisent le thème de l'application ; les couleurs restent accompagnées de texte et d'icônes. Les messages serveur restent visibles sans JavaScript.
+
+### Modification des cours collectifs
+
+Depuis le planning, Admin, Gérant et Réceptionniste peuvent modifier le titre, la salle, le coach, les horaires et la capacité d'un cours planifié qui n'a pas commencé. La salle et le coach sont vérifiés contre les autres cours et les séances privées ; un coach inactif doit être remplacé ou retiré. Une modification est refusée si la fiche a changé depuis son ouverture. Les opérations sont journalisées et transactionnelles.
+
+Pour protéger les inscriptions, les horaires ne peuvent pas changer tant que des réservations confirmées ou en attente existent, et la capacité ne peut pas descendre sous le nombre confirmé. Si la capacité augmente, les personnes en attente éligibles au moment du contrôle sont confirmées dans l'ordre d'inscription, tandis que les autres restent en attente. **Aucune notification automatique n'est envoyée** aux participants : prévenez-les manuellement, notamment après changement de salle ou de coach et après une promotion. Les réservations annulées ne bloquent pas la modification des horaires.
+
+Aucune migration supplémentaire n'est nécessaire si les tables des modules Cours et Coachs existent déjà. Les verrous et la concurrence restent à tester sur MySQL/Laragon avant utilisation réelle.
