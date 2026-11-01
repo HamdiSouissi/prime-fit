@@ -14,12 +14,19 @@ function gym_name(): string { return 'Club <Test>'; }
 function gym_brand_markup(): string { return e(gym_name()); }
 $data['member']['first_name']='<script>alert(1)</script>';
 $data['programs'][0]['content']='<img src=x onerror=alert(1)>';
+$card=['qr_token'=>str_repeat('a',64)]; $section='accueil';
 ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean();
-if (str_contains($html,'<script>alert(1)</script>') || str_contains($html,'<img src=x onerror=alert(1)>') || !str_contains($html,'&lt;script&gt;alert(1)&lt;/script&gt;') || !str_contains($html,'&lt;img src=x onerror=alert(1)&gt;')) throw new RuntimeException('Échappement du portail insuffisant');
+if (str_contains($html,'<script>alert(1)</script>') || !str_contains($html,'&lt;script&gt;alert(1)&lt;/script&gt;') || !str_contains($html,'PF1:'.str_repeat('a',64)) || !str_contains($html,'name="action" value="card_mail"')) throw new RuntimeException('Accueil ou QR non sécurisé');
+$section='programmes'; ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean();
+if (str_contains($html,'<img src=x onerror=alert(1)>') || !str_contains($html,'&lt;img src=x onerror=alert(1)&gt;')) throw new RuntimeException('Programme non échappé');
+$section='cours'; ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean();
 if (!str_contains($html,'Inscription confirmée') || str_contains($html,'name="course_id"')) throw new RuntimeException('État de réservation incorrect');
 $db->exec("UPDATE course_bookings SET status='cancelled' WHERE member_id=1"); $data=$service->get(1,new DateTimeImmutable('2026-02-01 10:00:00'));
 ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean();
 if (!str_contains($html,'S’inscrire') || !str_contains($html,'name="csrf"') || !str_contains($html,'name="course_id"')) throw new RuntimeException('Formulaire d’inscription absent');
+$section='mesures'; ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean(); if (!str_contains($html,'name="action" value="measurement_update"') || !str_contains($html,'name="current_password"')) throw new RuntimeException('Mesures non modifiables');
+require_once __DIR__.'/../app/services/MemberPortalProfile.php'; $profile=['first_name'=>'A <B>','last_name'=>'Test','email'=>'a@example.tn','phone'=>'','governorate'=>'','birth_date'=>'','version'=>'test'];
+$section='profil'; ob_start(); require __DIR__.'/../app/views/member_portal.php'; $html=ob_get_clean(); if (!str_contains($html,'A &lt;B&gt;') || !str_contains($html,'name="action" value="profile_update"') || !str_contains($html,'readonly')) throw new RuntimeException('Profil ou échappement incorrect');
 for ($i=10;$i<35;$i++) $db->prepare('INSERT INTO fitness_measurements VALUES(?,1,?,?,?,?,?)')->execute([$i,'2025-01-01',80,180,null,'interne']);
 $second=$service->get(1,new DateTimeImmutable('2026-02-01 10:00:00'),2);
 if ($second['measureTotal']!==26 || $second['measurePages']!==2 || $second['measurePage']!==2 || count($second['measurements'])!==6 || isset($second['measurements'][0]['notes'])) throw new RuntimeException('Pagination des mesures incorrecte');

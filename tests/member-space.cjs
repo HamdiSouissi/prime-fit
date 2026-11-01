@@ -1,0 +1,15 @@
+const fs = require('fs');
+const { JSDOM } = require('jsdom');
+const script = fs.readFileSync('public/assets/member-space.js', 'utf8');
+const dom = new JSDOM(`<div data-member-pager data-page-size="2"><div><article data-member-item>1</article><article data-member-item>2</article><article data-member-item>3</article></div><div class="member-pager" hidden><button data-prev>Précédent</button><span data-count></span><button data-next>Suivant</button></div></div>`, { runScripts: 'outside-only' });
+const doc = dom.window.document;
+if ([...doc.querySelectorAll('[data-member-item]')].some(item => item.hidden)) throw new Error('Le contenu doit rester visible sans JS');
+dom.window.eval(script);
+const items = [...doc.querySelectorAll('[data-member-item]')];
+const prev = doc.querySelector('[data-prev]'); const next = doc.querySelector('[data-next]');
+if (items[0].hidden || items[1].hidden || !items[2].hidden || !prev.disabled || next.disabled) throw new Error('Première page incorrecte');
+next.click();
+if (!items[0].hidden || !items[1].hidden || items[2].hidden || !next.disabled || prev.disabled || doc.querySelector('[data-count]').textContent !== '2 / 2') throw new Error('Navigation suivante incorrecte');
+prev.click(); if (items[0].hidden || !items[2].hidden) throw new Error('Navigation précédente incorrecte');
+if (!fs.readFileSync('public/assets/member-space.css','utf8').includes('[data-member-item][hidden]{display:none!important}')) throw new Error('Les éléments masqués doivent rester masqués malgré display');
+console.log('Espace membre : pagination progressive et repli sans JavaScript OK');

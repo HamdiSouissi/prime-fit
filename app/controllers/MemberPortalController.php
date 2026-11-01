@@ -147,6 +147,21 @@ final class MemberPortalController {
                     $this->limit('measurement:'.$_SESSION['member_portal']['member_id']);
                     (new MemberPortalMeasurements(db()))->update($_SESSION['member_portal'],$_POST,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
                     $_SESSION['portal_notice']=['type'=>'success','message'=>'Votre mesure a été mise à jour.'];
+                } elseif ($action==='profile_update') {
+                    $this->limit('profile:'.$_SESSION['member_portal']['member_id']);
+                    (new MemberPortalProfile(db()))->update($_SESSION['member_portal'],$_POST,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
+                    $_SESSION['portal_notice']=['type'=>'success','message'=>'Vos informations ont été enregistrées.'];
+                } elseif ($action==='card_mail') {
+                    $this->limit('qr-mail:'.$_SESSION['member_portal']['member_id']);
+                    $card=(new MemberPortalCard(db()))->get($_SESSION['member_portal']);
+                    global $config;
+                    $status=(new MemberCardMailer(array_merge($config['mail'] ?? [],['gym_name'=>gym_name()])))->send($card);
+                    $messages=['accepted'=>'Votre carte a été acceptée par le serveur de messagerie. Vérifiez votre boîte de réception.','not_configured'=>'La messagerie n’est pas configurée. Contactez votre salle.','missing_email'=>'Votre adresse e-mail est indisponible. Contactez votre salle.','missing_qr'=>'Aucune carte QR n’est disponible. Contactez votre salle.','failed'=>'L’envoi a échoué. Veuillez réessayer ou contacter votre salle.'];
+                    $_SESSION['portal_notice']=['type'=>$status==='accepted' ? 'success' : 'error','message'=>$messages[$status]];
+                    if ($status==='accepted') {
+                        try { db()->prepare('INSERT INTO activity_logs (user_id,action,ip_address) VALUES (NULL,?,?)')->execute(['Espace membre : carte QR demandée par e-mail membre #'.$_SESSION['member_portal']['member_id'],substr((string)($_SERVER['REMOTE_ADDR'] ?? ''),0,45)]); }
+                        catch (PDOException $e) { error_log('Journalisation de l’envoi QR indisponible.'); $_SESSION['portal_notice']['message'].=' La journalisation est indisponible ; informez votre salle.'; }
+                    }
                 } elseif ($action==='book' && $id) {
                     $status=(new MemberPortalBooking(db()))->book($_SESSION['member_portal'],(int)$id,(string)($_SERVER['REMOTE_ADDR'] ?? ''));
                     $_SESSION['portal_notice']=['type'=>'success','message'=>$status==='confirmed' ? 'Votre inscription est confirmée.' : 'Ce cours est complet : vous êtes sur la liste d’attente.'];
@@ -159,11 +174,16 @@ final class MemberPortalController {
                 $_SESSION['portal_notice']=['type'=>'error','message'=>'La modification n’a pas pu être enregistrée. Vérifiez les données affichées puis réessayez.'];
             }
             $returnPage=filter_var($_POST['measurement_page'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]) ?: 1;
-            redirect('member_space&measurement_page='.$returnPage);
+            $returnSection=match($action ?? '') { 'measurement_update'=>'mesures','profile_update'=>'profil','book'=>'cours',default=>'accueil' };
+            redirect('member_space&section='.$returnSection.'&measurement_page='.$returnPage);
         }
         $notice=$_SESSION['portal_notice'] ?? null; unset($_SESSION['portal_notice']);
         $measurePage=filter_var($_GET['measurement_page'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>1000000]]) ?: 1;
         $data=(new MemberPortalData(db()))->get($_SESSION['member_portal']['member_id'],null,(int)$measurePage);
+        $section=is_string($_GET['section'] ?? null) ? $_GET['section'] : 'accueil';
+        if (!in_array($section,['accueil','cours','activite','mesures','programmes','profil'],true)) $section='accueil';
+        try { $card=(new MemberPortalCard(db()))->get($_SESSION['member_portal']); $profile=(new MemberPortalProfile(db()))->get($_SESSION['member_portal']); }
+        catch (DomainException $e) { unset($_SESSION['member_portal']); redirect('member_login'); }
         require __DIR__.'/../views/member_portal.php';
     }
     public function card(): void {
