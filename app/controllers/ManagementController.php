@@ -146,7 +146,7 @@ class ManagementController {
                 $name=trim($_POST['name'] ?? ''); $days=filter_var($_POST['duration_days'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1,'max_range'=>3650]]); $price=str_replace(',','.',trim($_POST['price'] ?? ''));
                 if ($name==='' || mb_strlen($name)>100 || !$days || !preg_match('/^\d{1,7}(\.\d{1,3})?$/',$price)) $error='Vérifiez le nom, la durée et le prix de la formule.';
                 else { db()->prepare('INSERT INTO plans (name,duration_days,price) VALUES (?,?,?)')->execute([$name,$days,$price]); $this->log('Formule créée #'.db()->lastInsertId()); $this->flash('Formule créée.'); redirect('subscriptions'); }
-            } elseif (in_array($action, ['subscription','renew','freeze','resume','cancel'], true)) {
+            } elseif (in_array($action, ['subscription','freeze','resume','cancel'], true)) {
                 $service=new SubscriptionService(db(), (int)$_SESSION['user']['id'], $_SERVER['REMOTE_ADDR'] ?? '');
                 try {
                     if ($action==='subscription') {
@@ -158,12 +158,7 @@ class ManagementController {
                     } else {
                         $id=filter_var($_POST['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
                         if (!$id) throw new DomainException('Abonnement invalide.');
-                        if ($action==='renew') {
-                            $expected=$_POST['plan_version'] ?? '';
-                            if (!is_string($expected) || !preg_match('/^[a-f0-9]{64}$/D',$expected)) throw new DomainException('Rechargez la page et vérifiez la formule avant de renouveler.');
-                            $created=$service->renew($id,$expected);
-                            $this->flash('Renouvellement enregistré du '.date('d/m/Y',strtotime($created['start'])).' au '.date('d/m/Y',strtotime($created['end'])).', prix fixé : '.dt($created['price']).'. Aucun paiement n’a été enregistré.');
-                        } elseif ($action==='freeze') { $service->freeze($id); $this->flash('Abonnement gelé à partir d’aujourd’hui.'); }
+                        if ($action==='freeze') { $service->freeze($id); $this->flash('Abonnement gelé à partir d’aujourd’hui.'); }
                         elseif ($action==='resume') { $result=$service->resume($id); $this->flash('Abonnement réactivé : '.$result['days'].' jour(s) crédité(s), fin le '.date('d/m/Y',strtotime($result['end'])).'.'); }
                         else { $service->cancel($id); $this->flash('Abonnement annulé. Aucun remboursement n’a été enregistré.'); }
                     }

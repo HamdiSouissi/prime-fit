@@ -19,6 +19,7 @@ require __DIR__ . '/../app/controllers/MarketingConsentController.php';
 require __DIR__ . '/../app/controllers/ReportController.php';
 require __DIR__ . '/../app/controllers/SettingsController.php';
 require __DIR__ . '/../app/controllers/SubscriptionPriceController.php';
+require __DIR__ . '/../app/controllers/SubscriptionRenewController.php';
 require __DIR__ . '/../app/controllers/PlanController.php';
 require __DIR__ . '/../app/controllers/ActivityController.php';
 require __DIR__ . '/../app/controllers/UserAdminController.php';
@@ -45,6 +46,7 @@ try {
     elseif ($page === 'member_card') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberCard(); }
     elseif ($page === 'plan') { if (!isset($_SESSION['user'])) redirect('login'); (new PlanController())->index(); }
     elseif ($page === 'subscription_detail') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->subscriptionDetail(); }
+    elseif ($page === 'subscription_renew') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionRenewController())->index(); }
     elseif ($page === 'subscription_prices') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionPriceController())->index(); }
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }
     elseif (in_array($page, ['payments', 'receipt', 'payment_refund'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); elseif ($page === 'payment_refund') $controller->refund(); else $controller->index(); }

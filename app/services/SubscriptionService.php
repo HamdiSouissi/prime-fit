@@ -18,12 +18,19 @@ class SubscriptionService {
         $stmt=$this->db->prepare('SELECT id,status FROM members WHERE id=? FOR UPDATE'); $stmt->execute([$id]); $m=$stmt->fetch();
         if (!$m || ($requireActive && $m['status']!=='active')) $this->fail('Membre introuvable ou inactif.'); return $m;
     }
-    private function lockSubscription(int $id): array {
+    // Cette lecture précède la transaction : la première lecture cohérente du contrôle
+    // de chevauchement ne doit pas créer un instantané avant l'obtention du verrou membre.
+    private function subscriptionMember(int $id): int {
         $stmt=$this->db->prepare('SELECT member_id FROM subscriptions WHERE id=?'); $stmt->execute([$id]); $member=$stmt->fetchColumn();
-        if (!$member) $this->fail('Abonnement introuvable.');
-        $this->lockMember((int)$member,false);
+        if (!$member) $this->fail('Abonnement introuvable.'); return (int)$member;
+    }
+    private function lockSubscription(int $id,int $member): array {
+        $this->lockMember($member,false);
         $stmt=$this->db->prepare('SELECT * FROM subscriptions WHERE id=? FOR UPDATE'); $stmt->execute([$id]); $s=$stmt->fetch();
-        if (!$s || (int)$s['member_id']!==(int)$member) $this->fail('Abonnement introuvable.'); return $s;
+        if (!$s || (int)$s['member_id']!==$member) $this->fail('Abonnement introuvable ou modifié.'); return $s;
+    }
+    public static function version(array $s): string {
+        return hash('sha256',json_encode([(int)$s['id'],(int)$s['member_id'],(int)$s['plan_id'],$s['start_date'],$s['end_date'],$s['status'],$s['agreed_price']],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
     }
     private function ensureNoOverlap(int $member,string $start,string $end,?int $exclude=null): void {
         $stmt=$this->db->prepare("SELECT id FROM subscriptions WHERE member_id=? AND status='frozen' AND id<>? LIMIT 1"); $stmt->execute([$member,$exclude ?? 0]);
@@ -38,6 +45,7 @@ class SubscriptionService {
         $date=DateTimeImmutable::createFromFormat('!Y-m-d',$start);
         if (!$date || $date->format('Y-m-d')!==$start || $start<'1900-01-01' || $start>'2099-12-31') $this->fail('Date de début invalide.');
         $end=$date->modify('+'.((int)$days-1).' days')->format('Y-m-d');
+        if ($end>'2099-12-31') $this->fail('La date de fin dépasse la limite autorisée.');
         $this->ensureNoOverlap($member,$start,$end);
         $stmt=$this->db->prepare("INSERT INTO subscriptions (member_id,plan_id,start_date,end_date,agreed_price,status) VALUES (?,?,?,?,?,'active')"); $stmt->execute([$member,$plan,$start,$end,$planData['price']]);
         $id=(int)$this->db->lastInsertId();
@@ -47,26 +55,32 @@ class SubscriptionService {
     public function create(int $member,int $plan,string $start,?string $expectedPlan=null): array {
         return $this->atomic(function() use ($member,$plan,$start,$expectedPlan) { $this->lockMember($member); return $this->insert($member,$plan,$start,null,$expectedPlan); });
     }
-    public function renew(int $id,?string $expectedPlan=null): array {
-        return $this->atomic(function() use ($id,$expectedPlan) {
-            $s=$this->lockSubscription($id); $this->lockMember((int)$s['member_id']);
+    public function renew(int $id,?string $expectedPlan=null,?int $selectedPlan=null,?string $expectedSubscription=null,?string $expectedStart=null): array {
+        $member=$this->subscriptionMember($id);
+        return $this->atomic(function() use ($id,$member,$expectedPlan,$selectedPlan,$expectedSubscription,$expectedStart) {
+            $s=$this->lockSubscription($id,$member); $this->lockMember($member);
+            if ($expectedSubscription!==null && !hash_equals(self::version($s),$expectedSubscription)) $this->fail('L’abonnement a changé depuis l’ouverture de la page. Vérifiez ses informations avant de continuer.');
             if ($s['status']==='frozen') $this->fail('Réactivez ou annulez cet abonnement avant de le renouveler.');
-            if ($s['status']==='cancelled') $this->fail('Un abonnement annulé ne peut pas être renouvelé. Créez une nouvelle adhésion.');
+            if ($s['status']!=='active') $this->fail('Un abonnement annulé ne peut pas être renouvelé. Créez une nouvelle adhésion.');
+            if ($selectedPlan!==null && $selectedPlan<1) $this->fail('Formule invalide.');
             $start=max($this->today->format('Y-m-d'),(new DateTimeImmutable($s['end_date']))->modify('+1 day')->format('Y-m-d'));
-            return $this->insert((int)$s['member_id'],(int)$s['plan_id'],$start,$id,$expectedPlan);
+            if ($expectedStart!==null && $expectedStart!==$start) $this->fail('La date de début a changé. Vérifiez le renouvellement avant de continuer.');
+            return $this->insert($member,$selectedPlan ?? (int)$s['plan_id'],$start,$id,$expectedPlan);
         });
     }
     public function freeze(int $id): void {
-        $this->atomic(function() use ($id) {
-            $s=$this->lockSubscription($id); $today=$this->today->format('Y-m-d');
+        $member=$this->subscriptionMember($id);
+        $this->atomic(function() use ($id,$member) {
+            $s=$this->lockSubscription($id,$member); $today=$this->today->format('Y-m-d');
             if ($s['status']!=='active' || $s['start_date']>$today || $s['end_date']<$today) $this->fail('Seul un abonnement actif et en cours peut être gelé.');
             $this->db->prepare("INSERT INTO subscription_freezes (subscription_id,frozen_on,state,created_by) VALUES (?,?,'open',?)")->execute([$id,$today,$this->userId]);
             $this->db->prepare("UPDATE subscriptions SET status='frozen' WHERE id=?")->execute([$id]); $this->log('Abonnement gelé #'.$id);
         });
     }
     public function resume(int $id): array {
-        return $this->atomic(function() use ($id) {
-            $s=$this->lockSubscription($id); $this->lockMember((int)$s['member_id']);
+        $member=$this->subscriptionMember($id);
+        return $this->atomic(function() use ($id,$member) {
+            $s=$this->lockSubscription($id,$member); $this->lockMember((int)$s['member_id']);
             if ($s['status']!=='frozen') $this->fail('Cet abonnement n’est pas gelé.');
             $stmt=$this->db->prepare("SELECT id,frozen_on FROM subscription_freezes WHERE subscription_id=? AND state='open' ORDER BY id DESC LIMIT 1 FOR UPDATE"); $stmt->execute([$id]); $freeze=$stmt->fetch();
             if (!$freeze) $this->fail('Ce gel ancien n’a pas de date enregistrée. Contactez un administrateur pour régulariser son historique.');
@@ -80,8 +94,9 @@ class SubscriptionService {
         });
     }
     public function cancel(int $id): void {
-        $this->atomic(function() use ($id) {
-            $s=$this->lockSubscription($id); if ($s['status']==='cancelled') $this->fail('Cet abonnement est déjà annulé.');
+        $member=$this->subscriptionMember($id);
+        $this->atomic(function() use ($id,$member) {
+            $s=$this->lockSubscription($id,$member); if ($s['status']==='cancelled') $this->fail('Cet abonnement est déjà annulé.');
             $this->db->prepare("UPDATE subscriptions SET status='cancelled' WHERE id=?")->execute([$id]);
             $this->db->prepare("UPDATE subscription_freezes SET state='cancelled',resumed_on=?,credited_days=0,closed_by=? WHERE subscription_id=? AND state='open'")->execute([$this->today->format('Y-m-d'),$this->userId,$id]);
             $this->log('Abonnement annulé #'.$id);
