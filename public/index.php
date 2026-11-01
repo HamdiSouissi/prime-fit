@@ -5,6 +5,7 @@ require __DIR__ . '/../app/controllers/AuthController.php';
 require __DIR__ . '/../app/controllers/AccountController.php';
 require __DIR__ . '/../app/controllers/DashboardController.php';
 require __DIR__ . '/../app/controllers/ManagementController.php';
+require __DIR__ . '/../app/controllers/MemberHistoryController.php';
 require __DIR__ . '/../app/controllers/PaymentController.php';
 require __DIR__ . '/../app/controllers/AttendanceController.php';
 require __DIR__ . '/../app/controllers/CourseController.php';
@@ -42,6 +43,7 @@ try {
     elseif (in_array($page, ['users','user'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new UserAdminController(); if ($page==='user') $controller->edit(); else $controller->index(); }
     elseif (in_array($page, ['activity','activity_export'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller=new ActivityController(); if ($page==='activity_export') $controller->export(); else $controller->index(); }
     elseif ($page === 'dashboard') { if (!isset($_SESSION['user'])) redirect('login'); (new DashboardController())->index(); }
+    elseif ($page === 'member_history') { if (!isset($_SESSION['user'])) redirect('login'); (new MemberHistoryController())->index(); }
     elseif ($page === 'member_profile') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberProfile(); }
     elseif ($page === 'member_card') { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->memberCard(); }
     elseif ($page === 'plan') { if (!isset($_SESSION['user'])) redirect('login'); (new PlanController())->index(); }
