@@ -373,6 +373,22 @@ mysql --default-character-set=utf8mb4 -u root -p prime_fit < database/repair_pay
 
 Remplacez `prime_fit` par votre base réelle. Vérifiez le message final : en cas de refus, ne forcez pas la modification et transmettez la définition complète de la colonne. Après succès, vérifiez la caisse, les reçus et la colonne `method` avant un nouvel encaissement. Cette réparation doit être validée sur MySQL/Laragon ; elle ne corrige pas d'autres tables mal encodées.
 
+### Reçus PDF et confirmations de paiement
+
+Avant de mettre à jour une base existante, sauvegardez-la et importez :
+
+```bash
+mysql --default-character-set=utf8mb4 -u root -p prime_fit < database/payment_receipts.sql
+```
+
+Remplacez `prime_fit` par le nom réel de la base. Les nouvelles installations créées avec `schema.sql` possèdent déjà la table. Chaque nouvel encaissement d’abonnement produit un PDF figé et le conserve dans `payment_receipts`, dans la même transaction que le paiement et l’audit : si le stockage du reçu échoue, le paiement est annulé. Incluez cette table dans les sauvegardes ; l’espace nécessaire augmente avec les reçus. Sur les anciens paiements, le PDF est reconstitué à la demande à partir des informations actuelles, ce qui est signalé dans le document ; les anciens e-mails ne sont pas envoyés rétroactivement.
+
+Depuis **Paiements**, filtrez la date ou ouvrez l’historique d’un membre, puis utilisez **Voir le reçu**, **Consulter le PDF** ou **Télécharger le PDF**. Ces accès suivent les autorisations existantes des reçus (Admin, Gérant, Réceptionniste, Comptable). Le PDF indique le montant initial : les remboursements sont affichés séparément sur la page du reçu. Il s’agit d’un justificatif d’encaissement, **pas d’une facture fiscale** ; TVA et timbre ne sont pas calculés. Les ventes boutique disposent d’un parcours séparé et ne sont pas couvertes par cet envoi.
+
+Après validation du paiement, un e-mail noir et jaune avec le PDF joint est envoyé à l’adresse de la fiche membre, si elle est valide et si `mail.enabled` et `mail.from` sont configurés. L’échec d’envoi ne supprime pas le paiement : la caisse l’indique et le PDF peut être téléchargé pour remise manuelle. L’acceptation par `mail()` ne garantit pas la réception ; vérifier la configuration PHP/Laragon et Mailpit. Le processus d’envoi est synchrone : après une interruption ou un délai, contrôler la caisse et les reçus avant de recommencer. Les reçus contiennent des données personnelles et financières : protéger les accès et sauvegardes et définir leur conservation.
+
+Le rendu PDF utilise TCPDF 6.7.8 (LGPL, licence dans `app/vendor/tcpdf/LICENSE.TXT`) et DejaVu Sans (licence fournie dans `app/vendor/tcpdf/fonts/dejavu-fonts-ttf-2.34/LICENSE`). Tester la migration, les verrous et la réception des pièces jointes sur MySQL/Laragon et Mailpit avant utilisation réelle.
+
 ### Diagnostic d’un paiement
 
 En cas d’erreur SQL pendant l’enregistrement, la caisse indique l’étape, le SQLSTATE et le code de la base, sans afficher les données SQL brutes. Le détail est enregistré dans le journal PHP configuré pour Apache. L’encaissement et son journal sont effectués dans la même transaction ; en cas d’échec de la confirmation de transaction, le résultat peut être incertain. Vérifiez toujours la caisse et les reçus avant de retenter, pour éviter un doublon. Si une incompatibilité de colonne est signalée, inspectez la structure de `payments` dans la base réelle plutôt que de modifier ou réimporter son schéma sans sauvegarde. Ces informations de diagnostic ne corrigent pas à elles seules un problème propre à une installation.

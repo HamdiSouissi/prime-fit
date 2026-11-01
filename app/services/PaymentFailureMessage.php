@@ -3,7 +3,7 @@ declare(strict_types=1);
 /** Diagnostic non sensible : le détail complet reste dans le journal PHP. */
 final class PaymentFailureMessage {
     public static function describe(string $stage, PDOException $error): string {
-        $allowed=['ouverture de la transaction','lecture de l’abonnement','lecture des paiements','lecture des remboursements','enregistrement du paiement','journal d’activité','validation de la transaction'];
+        $allowed=['ouverture de la transaction','lecture de l’abonnement','lecture des paiements','lecture des remboursements','enregistrement du paiement','création du reçu PDF','journal d’activité','validation de la transaction'];
         if (!in_array($stage,$allowed,true)) $stage='traitement';
         $info=$error->errorInfo ?? [];
         $state=(string)($info[0] ?? $error->getCode());

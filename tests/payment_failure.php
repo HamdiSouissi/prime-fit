@@ -4,10 +4,10 @@ require __DIR__.'/../app/services/SubscriptionPaymentService.php';
 require __DIR__.'/../app/services/PaymentFailureMessage.php';
 class PaymentFailurePDO extends PDO { public function prepare(string $sql,array $options=[]): PDOStatement|false { return parent::prepare(str_replace(' FOR UPDATE','',$sql),$options); } }
 $db=new PaymentFailurePDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
-$db->exec("CREATE TABLE subscriptions (id INTEGER,member_id INTEGER,agreed_price TEXT); CREATE TABLE payments (id INTEGER PRIMARY KEY,member_id INTEGER,subscription_id INTEGER,amount TEXT,method TEXT); CREATE TABLE payment_refunds (payment_id INTEGER,amount TEXT); INSERT INTO subscriptions VALUES(1,1,'50.000')");
+$db->exec("CREATE TABLE subscriptions (id INTEGER,member_id INTEGER,agreed_price TEXT,plan_id INTEGER); CREATE TABLE members(id INTEGER,first_name TEXT,last_name TEXT,email TEXT,card_number TEXT); CREATE TABLE plans(id INTEGER,name TEXT); CREATE TABLE payment_receipts(payment_id INTEGER,pdf BLOB,recipient_email TEXT); INSERT INTO members VALUES(1,'A','B','a@example.tn','1'); INSERT INTO plans VALUES(1,'Mensuel'); CREATE TABLE payments (id INTEGER PRIMARY KEY,member_id INTEGER,subscription_id INTEGER,amount TEXT,method TEXT,paid_at TEXT DEFAULT '2030-01-01 10:00:00'); CREATE TABLE payment_refunds (payment_id INTEGER,amount TEXT); INSERT INTO subscriptions VALUES(1,1,'50.000',1)");
 $service=new SubscriptionPaymentService($db,1,'127.0.0.1');
 try { $service->pay(1,'10','espèces'); throw new RuntimeException('Audit absent accepté'); } catch (PDOException $ex) {
-    if ($service->failureStage()!=='journal d’activité' || $db->inTransaction() || (int)$db->query('SELECT COUNT(*) FROM payments')->fetchColumn()!==0) throw new RuntimeException('Étape ou rollback incorrect');
+    if ($service->failureStage()!=='journal d’activité' || $db->inTransaction() || (int)$db->query('SELECT COUNT(*) FROM payments')->fetchColumn()!==0 || (int)$db->query('SELECT COUNT(*) FROM payment_receipts')->fetchColumn()!==0) throw new RuntimeException('Étape ou rollback incorrect');
     $msg=PaymentFailureMessage::describe($service->failureStage(),$ex);
     if (!str_contains($msg,'journal d’activité') || !str_contains($msg,'SQLSTATE') || str_contains($msg,$ex->getMessage())) throw new RuntimeException('Diagnostic incorrect');
 }

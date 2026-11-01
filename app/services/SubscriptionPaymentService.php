@@ -1,13 +1,17 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/SubscriptionPriceService.php';
+require_once __DIR__.'/PaymentReceiptPdf.php';
 /** Encaissement sérialisé sur l'abonnement, au tarif fixé. */
 class SubscriptionPaymentService {
     private string $failureStage='préparation';
-    public function __construct(private PDO $db,private int $userId,private string $ip) {}
+    private ?array $lastReceipt=null;
+    public function __construct(private PDO $db,private int $userId,private string $ip,private string $gymName='Horizon Sportif de Bir El Hafey') {}
     /** Étape technique sans données personnelles, pour diagnostiquer un échec SQL. */
     public function failureStage(): string { return $this->failureStage; }
+    public function lastReceipt(): ?array { return $this->lastReceipt; }
     public function pay(int $subscription,string $amount,string $method): int {
+        $this->lastReceipt=null;
         $amount=str_replace(',','.',trim($amount));
         if ($subscription<1 || !preg_match('/^\d{1,7}(\.\d{1,3})?$/D',$amount) || SubscriptionPriceService::millimes($amount)<=0 || !in_array($method,['espèces','chèque','virement','D17','Flouci','carte bancaire'],true)) throw new DomainException('Sélectionnez un abonnement et indiquez un montant positif et un moyen de paiement valides.');
         $this->failureStage='ouverture de la transaction';
@@ -26,10 +30,17 @@ class SubscriptionPaymentService {
             if (SubscriptionPriceService::millimes($amount)>$remaining) throw new DomainException('Le montant dépasse le reste à payer de cet abonnement.');
             $this->failureStage='enregistrement du paiement';
             $this->db->prepare('INSERT INTO payments (member_id,subscription_id,amount,method) VALUES (?,?,?,?)')->execute([$sub['member_id'],$subscription,$amount,$method]); $id=(int)$this->db->lastInsertId();
+            $this->failureStage='création du reçu PDF';
+            $stmt=$this->db->prepare('SELECT pay.*,m.first_name,m.last_name,m.email,m.card_number,p.name AS plan FROM payments pay JOIN members m ON m.id=pay.member_id LEFT JOIN subscriptions s ON s.id=pay.subscription_id LEFT JOIN plans p ON p.id=s.plan_id WHERE pay.id=?');
+            $stmt->execute([$id]); $receipt=$stmt->fetch();
+            if (!$receipt) throw new RuntimeException('Données du reçu introuvables.');
+            $pdf=PaymentReceiptPdf::render($receipt,$this->gymName);
+            $stmt=$this->db->prepare('INSERT INTO payment_receipts (payment_id,pdf,recipient_email) VALUES (?,?,?)');
+            $stmt->bindValue(1,$id,PDO::PARAM_INT); $stmt->bindValue(2,$pdf,PDO::PARAM_LOB); $stmt->bindValue(3,$receipt['email'], $receipt['email']===null ? PDO::PARAM_NULL : PDO::PARAM_STR); $stmt->execute();
             $this->failureStage='journal d’activité';
             $this->db->prepare('INSERT INTO activity_logs (user_id,action,ip_address) VALUES (?,?,?)')->execute([$this->userId,'Paiement enregistré #'.$id,substr($this->ip,0,45)]);
             $this->failureStage='validation de la transaction';
-            $this->db->commit(); return $id;
+            $this->db->commit(); $this->lastReceipt=['payment'=>$receipt,'pdf'=>$pdf,'gym'=>$this->gymName]; return $id;
         } catch (Throwable $ex) { if ($this->db->inTransaction()) $this->db->rollBack(); throw $ex; }
     }
 }

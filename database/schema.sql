@@ -67,6 +67,14 @@ CREATE TABLE IF NOT EXISTS marketing_consent_events (
 CREATE TABLE IF NOT EXISTS plans (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, duration_days INT UNSIGNED NOT NULL, price DECIMAL(10,3) NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS subscriptions (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, member_id INT UNSIGNED NOT NULL, plan_id INT UNSIGNED NOT NULL, start_date DATE NOT NULL, end_date DATE NOT NULL, agreed_price DECIMAL(10,3) NULL, status ENUM('active','frozen','cancelled') NOT NULL DEFAULT 'active', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(member_id) REFERENCES members(id), FOREIGN KEY(plan_id) REFERENCES plans(id), INDEX idx_subscription_dates(status,end_date), INDEX idx_subscription_member(member_id)) ENGINE=InnoDB;
 CREATE TABLE IF NOT EXISTS payments (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, member_id INT UNSIGNED NOT NULL, subscription_id INT UNSIGNED NULL, amount DECIMAL(10,3) NOT NULL, method ENUM('espèces','chèque','virement','D17','Flouci','carte bancaire') NOT NULL, paid_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(member_id) REFERENCES members(id), FOREIGN KEY(subscription_id) REFERENCES subscriptions(id), INDEX idx_payment_date(paid_at)) ENGINE=InnoDB;
+-- Sélectionner la base utilisée et sauvegarder avant import. Reçus immuables des nouveaux paiements.
+CREATE TABLE IF NOT EXISTS payment_receipts (
+ payment_id INT UNSIGNED PRIMARY KEY,
+ pdf LONGBLOB NOT NULL,
+ recipient_email VARCHAR(190) NULL,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (payment_id) REFERENCES payments(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- Sélectionner la base utilisée et sauvegarder avant installation.
 CREATE TABLE IF NOT EXISTS payment_refunds (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

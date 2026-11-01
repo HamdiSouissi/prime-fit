@@ -2,6 +2,7 @@
 require_once __DIR__.'/../services/SubscriptionPaymentService.php';
 require_once __DIR__.'/../services/PaymentRefundService.php';
 require_once __DIR__.'/../services/PaymentFailureMessage.php';
+require_once __DIR__.'/../services/PaymentReceiptMailer.php';
 class PaymentController {
     private function canWrite(): bool {
         return in_array($_SESSION['user']['role'], ['Admin', 'Gérant', 'Réceptionniste', 'Comptable'], true);
@@ -17,15 +18,22 @@ class PaymentController {
             $amount=$_POST['amount'] ?? ''; $method=$_POST['method'] ?? '';
             if (!$subscription || !is_string($amount) || !is_string($method)) $error='Vérifiez les champs du paiement.';
             else {
-                $service=new SubscriptionPaymentService(db(),(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? '');
+                $service=new SubscriptionPaymentService(db(),(int)$_SESSION['user']['id'],$_SERVER['REMOTE_ADDR'] ?? '',gym_name());
                 try { $service->pay($subscription,$amount,$method);
-                    $_SESSION['flash']='Paiement enregistré. Le reçu est disponible dans la liste.'; redirect('payments');
+                    global $config;
+                    $sent=(new PaymentReceiptMailer($config['mail'] ?? []))->send($service->lastReceipt());
+                    $messages=['accepted'=>'E-mail de confirmation accepté par le serveur (livraison non garantie).','missing_email'=>'E-mail non envoyé : le membre n’a pas d’adresse valide.','not_configured'=>'E-mail non envoyé : le transport e-mail n’est pas configuré.','failed'=>'E-mail non envoyé : vérifiez la configuration du serveur.'];
+                    $_SESSION['flash']='Paiement enregistré. Reçu PDF disponible. '.($messages[$sent] ?? $messages['failed']); redirect('payments');
                 } catch (DomainException $ex) { $error=$ex->getMessage(); }
                   catch (PDOException $ex) {
                       // Ne jamais exposer le message SQL brut : il peut contenir des données sensibles.
                       error_log('Paiement — '.$service->failureStage().' : '.$ex->getMessage());
                       http_response_code(503);
                       $error=PaymentFailureMessage::describe($service->failureStage(),$ex);
+                      if (($ex->errorInfo[0] ?? '')==='42S02' && (int)($ex->errorInfo[1] ?? 0)===1146 && stripos((string)($ex->errorInfo[2] ?? ''),'payment_receipts')!==false) $error.=' Après sauvegarde, importez database/payment_receipts.sql dans la base utilisée.';
+                  } catch (Throwable $ex) {
+                      error_log('Paiement — erreur pendant '.$service->failureStage().'.'); http_response_code(503);
+                      $error='Impossible de confirmer le paiement à l’étape « '.$service->failureStage().' ». Vérifiez la caisse avant toute nouvelle tentative.';
                   }
             }
         }
@@ -57,6 +65,21 @@ class PaymentController {
         }
         $stmt=db()->prepare('SELECT r.id,r.amount,r.reason,r.refunded_at,u.name AS author FROM payment_refunds r LEFT JOIN users u ON u.id=r.created_by WHERE r.payment_id=? ORDER BY r.refunded_at,r.id'); $stmt->execute([$id]); $refunds=$stmt->fetchAll();
         require __DIR__.'/../views/receipt.php';
+    }
+    public function receiptPdf(): void {
+        if (!in_array($_SESSION['user']['role'],['Admin','Gérant','Réceptionniste','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }
+        $id=filter_var($_GET['id'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+        if (!$id) { http_response_code(404); exit('Reçu introuvable.'); }
+        $stmt=db()->prepare('SELECT pay.*,m.first_name,m.last_name,m.card_number,p.name AS plan FROM payments pay JOIN members m ON m.id=pay.member_id LEFT JOIN subscriptions s ON s.id=pay.subscription_id LEFT JOIN plans p ON p.id=s.plan_id WHERE pay.id=?'); $stmt->execute([$id]); $payment=$stmt->fetch();
+        if (!$payment) { http_response_code(404); exit('Reçu introuvable.'); }
+        $stmt=db()->prepare('SELECT pdf FROM payment_receipts WHERE payment_id=?'); $stmt->execute([$id]); $pdf=$stmt->fetchColumn();
+        if (is_resource($pdf)) $pdf=stream_get_contents($pdf);
+        // Anciens paiements : pas d'instantané disponible, le document l'indique explicitement.
+        if ($pdf===false) $pdf=PaymentReceiptPdf::render($payment,gym_name(),true);
+        if (!is_string($pdf) || !str_starts_with($pdf,'%PDF-')) { http_response_code(500); exit('Reçu indisponible.'); }
+        header('Content-Type: application/pdf'); header('Cache-Control: private, no-store'); header('X-Content-Type-Options: nosniff'); header('Referrer-Policy: no-referrer');
+        $disposition=($_GET['download'] ?? '')==='1' ? 'attachment' : 'inline';
+        header('Content-Disposition: '.$disposition.'; filename="recu-paiement-'.(int)$id.'.pdf"'); header('Content-Length: '.strlen($pdf)); echo $pdf;
     }
     public function refund(): void {
         if (!in_array($_SESSION['user']['role'],['Admin','Gérant','Comptable'],true)) { http_response_code(403); exit('Accès interdit.'); }

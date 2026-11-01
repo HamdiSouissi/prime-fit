@@ -82,7 +82,7 @@ try {
     elseif ($page === 'subscription_renew') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionRenewController())->index(); }
     elseif ($page === 'subscription_prices') { if (!isset($_SESSION['user'])) redirect('login'); (new SubscriptionPriceController())->index(); }
     elseif (in_array($page, ['members', 'subscriptions'], true)) { if (!isset($_SESSION['user'])) redirect('login'); (new ManagementController())->$page(); }
-    elseif (in_array($page, ['payments', 'receipt', 'payment_refund'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); elseif ($page === 'payment_refund') $controller->refund(); else $controller->index(); }
+    elseif (in_array($page, ['payments', 'receipt', 'receipt_pdf', 'payment_refund'], true)) { if (!isset($_SESSION['user'])) redirect('login'); $controller = new PaymentController(); if ($page === 'receipt') $controller->receipt(); elseif ($page === 'receipt_pdf') $controller->receiptPdf(); elseif ($page === 'payment_refund') $controller->refund(); else $controller->index(); }
     elseif ($page === 'attendance') { if (!isset($_SESSION['user'])) redirect('login'); (new AttendanceController())->index(); }
     elseif ($page === 'course_bookings') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseBookingsController())->index(); }
     elseif ($page === 'course_edit') { if (!isset($_SESSION['user'])) redirect('login'); (new CourseEditController())->index(); }
@@ -118,6 +118,8 @@ try {
         echo 'La boutique doit être mise à jour : après sauvegarde, importez database/shop_sale_requests.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'subscription_discounts') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/subscription_discounts.sql dans la base utilisée.';
+    } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'payment_receipts') !== false) {
+        echo 'La base doit être mise à jour : après sauvegarde, importez database/payment_receipts.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S02' && (int)($ex->errorInfo[1] ?? 0) === 1146 && stripos((string)($ex->errorInfo[2] ?? ''), 'payment_refunds') !== false) {
         echo 'La base doit être mise à jour : après sauvegarde, importez database/payment_refunds.sql dans la base utilisée.';
     } elseif (($ex->errorInfo[0] ?? '') === '42S22' && (int)($ex->errorInfo[1] ?? 0) === 1054 && stripos((string)($ex->errorInfo[2] ?? ''), 'product_name_snapshot') !== false) {
