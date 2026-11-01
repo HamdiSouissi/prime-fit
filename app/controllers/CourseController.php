@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__.'/../services/CoachSchedule.php';
+require_once __DIR__.'/../services/CourseSearch.php';
 class CourseController {
     private function canWrite(): bool { return in_array($_SESSION['user']['role'], ['Admin','Gérant','Réceptionniste'], true); }
     private function log(PDO $pdo, string $action): void {
@@ -72,7 +73,20 @@ class CourseController {
         $rooms=db()->query('SELECT * FROM rooms ORDER BY name')->fetchAll();
         $coaches=db()->query("SELECT id,name FROM users WHERE role='Coach' AND is_active=1 ORDER BY name")->fetchAll();
         $members=db()->query("SELECT id,first_name,last_name,card_number FROM members WHERE status='active' ORDER BY last_name,first_name")->fetchAll();
-        $courses=db()->query("SELECT c.*, r.name AS room, u.name AS coach, (SELECT COUNT(*) FROM course_bookings b WHERE b.course_id=c.id AND b.status='confirmed') AS confirmed, (SELECT COUNT(*) FROM course_bookings b WHERE b.course_id=c.id AND b.status='waiting') AS waiting FROM courses c JOIN rooms r ON r.id=c.room_id LEFT JOIN users u ON u.id=c.coach_id WHERE c.starts_at >= CURDATE() ORDER BY c.starts_at LIMIT 100")->fetchAll();
+        $filterError=''; $result=['courses'=>[],'total'=>0,'page'=>1,'pages'=>1];
+        try {
+            $filters=CourseSearch::filters($_GET,date('Y-m-d'));
+            $requestedPage=filter_var($_GET['p'] ?? 1,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]) ?: 1;
+            $result=(new CourseSearch(db()))->search($filters,(int)$requestedPage);
+        } catch (DomainException $ex) {
+            $filterError=$ex->getMessage(); $filters=['q'=>'','from'=>'','to'=>'','status'=>''];
+            foreach ($filters as $key=>$_) if (is_string($_GET[$key] ?? null)) $filters[$key]=$_GET[$key];
+        }
+        $courses=$result['courses'];
+        // On conserve les filtres pour consulter une fiche et parcourir les pages.
+        $courseUrl=static function(array $extra=[]) use ($filters,$result): string {
+            return 'index.php?'.http_build_query(array_merge(['page'=>'courses','filter'=>'1'],$filters,['p'=>$result['page']],$extra));
+        };
         $selected=filter_var($_GET['course'] ?? '',FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]); $selectedCourse=null; $bookings=[];
         if ($selected) {
             $stmt=db()->prepare('SELECT c.*,r.name AS room FROM courses c JOIN rooms r ON r.id=c.room_id WHERE c.id=?'); $stmt->execute([$selected]); $selectedCourse=$stmt->fetch();
